@@ -60,7 +60,7 @@ export default function TimeSeries({
       endTime,
       layer,
     });
-    fetch(`/api/timeseries?${params.toString()}`, { signal: abortCtrl.signal })
+    fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/timeseries?${params.toString()}`, { signal: abortCtrl.signal })
       .then((r) => r.json())
       .then((json) => {
         let points: TSPoint[] = [];

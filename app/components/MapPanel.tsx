@@ -98,7 +98,7 @@ function buildWmsTileUrl(
     LOGSCALE: "false",
     ...(time ? { TIME: time } : {}),
   });
-  return `/api/wms?${decodeURIComponent(params.toString())}`;
+  return `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/wms?${decodeURIComponent(params.toString())}`;
 }
 
 

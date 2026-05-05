@@ -59,7 +59,7 @@ export default function OceanViewer() {
   useEffect(() => {
     const abortCtrl = new AbortController();
     fetch(
-      "/api/metadata?item=layerDetails&layerName=temperature",
+      `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/metadata?item=layerDetails&layerName=temperature`,
       { signal: abortCtrl.signal }
     )
       .then((r) => r.json())
@@ -88,7 +88,7 @@ export default function OceanViewer() {
         return Promise.all(
           times.map((t) =>
             fetch(
-              `/api/metadata?item=timesteps&layerName=temperature&day=${t.slice(0, 10)}`,
+              `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/metadata?item=timesteps&layerName=temperature&day=${t.slice(0, 10)}`,
               { signal: abortCtrl.signal }
             )
               .then((r) => r.json())

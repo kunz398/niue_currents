@@ -49,7 +49,7 @@ export default function Hovmoller({ probePoint, availableTimes }: Props) {
         endTime: availableTimes[availableTimes.length - 1],
         layer: "temperature",
       });
-      return fetch(`/api/timeseries?${params.toString()}`, {
+      return fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/timeseries?${params.toString()}`, {
         signal: abortCtrl.signal,
       })
         .then((r) => r.json())

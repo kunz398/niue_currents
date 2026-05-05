@@ -60,7 +60,7 @@ export default function TSDiagram({ probePoint, currentTime }: Props) {
         lat: String(probePoint.lat),
         time: currentTime,
       });
-      fetch(`/api/tsdata?${params.toString()}`, { signal: abortCtrl.signal })
+      fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/tsdata?${params.toString()}`, { signal: abortCtrl.signal })
         .then((r) => r.json())
         .then((json: TSDataPoint[]) => {
           setData(Array.isArray(json) ? json : []);

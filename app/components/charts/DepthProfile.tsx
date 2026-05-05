@@ -61,7 +61,7 @@ export default function DepthProfile({
       time: currentTime,
       layer,
     });
-    fetch(`/api/profile?${params.toString()}`, { signal: abortCtrl.signal })
+    fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/profile?${params.toString()}`, { signal: abortCtrl.signal })
       .then((r) => r.json())
       .then((json) => {
         // Handle ncWMS vertical profile response shapes
