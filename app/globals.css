@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0f1117;
+  --foreground: #e2e8f0;
+  --panel-bg: #1a1f2e;
+  --panel-border: #2d3748;
+  --accent: #3b82f6;
 }
 
 @theme inline {
@@ -12,15 +15,24 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* maplibre canvas */
+.maplibregl-canvas {
+  outline: none;
+}
+
+/* remove maplibre default controls we won't use */
+.maplibregl-ctrl-logo {
+  display: none !important;
 }

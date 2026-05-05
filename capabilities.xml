@@ -1,0 +1,1683 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<WMS_Capabilities
+        version="1.3.0"
+        updateSequence="2026-05-05T01:12:17.404Z"
+        xmlns="http://www.opengis.net/wms"
+        xmlns:xlink="http://www.w3.org/1999/xlink"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:edal="http://reading-escience-centre.github.io/edal-java/wms"
+        xsi:schemaLocation="http://www.opengis.net/wms http://schemas.opengis.net/wms/1.3.0/capabilities_1_3_0.xsd">
+    <Service>
+        <Name>WMS</Name>
+        <Title>Pacific Ocean Portal - THREDDS</Title>
+        <Abstract>Scientific Data</Abstract>
+        <KeywordList>
+            <Keyword>meteorology</Keyword>
+            <Keyword> atmosphere</Keyword>
+            <Keyword> climate</Keyword>
+            <Keyword> ocean</Keyword>
+            <Keyword> earth science</Keyword>
+        </KeywordList>
+        <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc"/>
+        <ContactInformation>
+            <ContactPersonPrimary>
+                <ContactPerson>Anuj Divesh</ContactPerson>
+                <ContactOrganization>Pacific Community</ContactOrganization>
+            </ContactPersonPrimary>
+            <ContactVoiceTelephone></ContactVoiceTelephone>
+            <ContactElectronicMailAddress>divesha@spc.int</ContactElectronicMailAddress>
+        </ContactInformation>
+        <Fees>none</Fees>
+        <AccessConstraints>none</AccessConstraints>
+        <LayerLimit>1</LayerLimit>
+        <MaxWidth>2048</MaxWidth>
+        <MaxHeight>2048</MaxHeight>
+    </Service>
+    <Capability>
+        <Request>
+            <GetCapabilities>
+                <Format>text/xml</Format>
+                <DCPType>
+                    <HTTP>
+                        <Get>
+                            <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc"/>
+                        </Get>
+                    </HTTP>
+                </DCPType>
+            </GetCapabilities>
+            <GetMap>
+                <Format>image/png</Format>
+                <Format>image/png;mode=32bit</Format>
+                <Format>image/gif</Format>
+                <Format>image/jpeg</Format>
+                <Format>application/vnd.google-earth.kmz</Format>
+                <DCPType>
+                    <HTTP>
+                        <Get>
+                            <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc"/>
+                        </Get>
+                    </HTTP>
+                </DCPType>
+            </GetMap>
+            <GetFeatureInfo>
+                <Format>text/plain</Format>
+                <Format>text/xml</Format>
+                <Format>text/html</Format>
+                <DCPType>
+                    <HTTP>
+                        <Get>
+                            <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc"/>
+                        </Get>
+                    </HTTP>
+                </DCPType>
+            </GetFeatureInfo>
+        </Request>
+        <Exception>
+            <Format>XML</Format>
+        </Exception>
+        <edal:ExtendedCapabilities>
+            <edal:CapabilitiesType>ncWMS2</edal:CapabilitiesType>
+            <edal:ExtendedRequest>
+                <edal:Request>GetMap</edal:Request>
+                <edal:UrlParameter>
+                    <edal:ParameterName>COLORSCALERANGE</edal:ParameterName>
+                    <edal:ParameterDescription>Of the form min,max this is the scale range used for plotting the data.</edal:ParameterDescription>
+                </edal:UrlParameter>
+                <edal:UrlParameter>
+                    <edal:ParameterName>NUMCOLORBANDS</edal:ParameterName>
+                    <edal:ParameterDescription>The number of discrete colours to plot the data. Must be between 2 and 250</edal:ParameterDescription>
+                </edal:UrlParameter>
+                <edal:UrlParameter>
+                    <edal:ParameterName>ABOVEMAXCOLOR</edal:ParameterName>
+                    <edal:ParameterDescription>The colour to plot values which are above the maximum end of the scale range. Colours are as defined above, with the addition of "extend", which will use the maximum value of the palette.</edal:ParameterDescription>
+                </edal:UrlParameter>
+                <edal:UrlParameter>
+                    <edal:ParameterName>BELOWMINCOLOR</edal:ParameterName>
+                    <edal:ParameterDescription>The colour to plot values which are below the minimum end of the scale range. Colours are as defined above, with the addition of "extend", which will use the minimum value of the palette.</edal:ParameterDescription>
+                </edal:UrlParameter>
+                <edal:UrlParameter>
+                    <edal:ParameterName>LOGSCALE</edal:ParameterName>
+                    <edal:ParameterDescription> "true" or "false" - whether to plot data with a logarithmic scale</edal:ParameterDescription>
+                </edal:UrlParameter>
+                <edal:UrlParameter>
+                    <edal:ParameterName>TARGETTIME</edal:ParameterName>
+                    <edal:ParameterDescription>For in-situ data, all points which fall within the time range (specified in the TIME parameter) will be plotted. In the case that an in-situ point has multiple time readings within that range, the colour used to plot them will depend on the time value which is closest to this given value</edal:ParameterDescription>
+                </edal:UrlParameter>
+                <edal:UrlParameter>
+                    <edal:ParameterName>TARGETELEVATION</edal:ParameterName>
+                    <edal:ParameterDescription>For in-situ data, all points which fall within the elevation range (specified in the ELEVATION parameter) will be plotted. In the case that an in-situ point has multiple elevation readings within that range, the colour used to plot them will depend on the elevation value which is closest to this given value</edal:ParameterDescription>
+                </edal:UrlParameter>
+                <edal:UrlParameter>
+                    <edal:ParameterName>OPACITY</edal:ParameterName>
+                    <edal:ParameterDescription>The percentage opacity of the final output image</edal:ParameterDescription>
+                </edal:UrlParameter>
+                <edal:UrlParameter>
+                    <edal:ParameterName>ANIMATION</edal:ParameterName>
+                    <edal:ParameterDescription>"true" or "false" - whether to generate an animation. This also needs the TIME to be of the formstarttime/endtime, and currently is only implemented for features with a discrete time axis.</edal:ParameterDescription>
+                </edal:UrlParameter>
+            </edal:ExtendedRequest>
+            <edal:ExtendedRequest>
+                <edal:Request>GetTimeseries</edal:Request>
+                <edal:RequestDescription>This produces either a timeseries graph or, if downloading is enabled, a CSV file containing the data. The URL parameters are identical to those of a GetFeatureInfo request. The TIME parameter should specify a range of times in the form starttime/endtime, and the supported formats are: image/png,image/jpg,image/jpeg,text/csv,text/json,application/prs.coverage+json,application/prs.coverage json</edal:RequestDescription>
+            </edal:ExtendedRequest>
+            <edal:ExtendedRequest>
+                <edal:Request>GetVerticalProfile</edal:Request>
+                <edal:RequestDescription>This produces either a vertical profile graph or, if downloading is enabled, a CSV file containing the data. The URL parameters are identical to those of a GetFeatureInfo request. The ELEVATION parameter should specify a range of elevations in the form startelevation/endelevation, and the supported formats are: image/png,image/jpg,image/jpeg,text/csv,text/json,application/prs.coverage+json,application/prs.coverage json</edal:RequestDescription>
+            </edal:ExtendedRequest>
+            <edal:ExtendedRequest>
+                <edal:Request>GetTransect</edal:Request>
+                <edal:RequestDescription>This produces a graph of data values along an arbitrary path. Additionally if there is vertical information present in the dataset, it will produce a vertical section along the same path.  It accepts the same URL parameters as a GetMap requestion, with the additional mandatory parameter LINESTRING</edal:RequestDescription>
+                <edal:UrlParameter>
+                    <edal:ParameterName>LINESTRING</edal:ParameterName>
+                    <edal:ParameterDescription>The points which define the path of the transect to plot.  Of the form x1 y1,x2 y2,x3 y3...</edal:ParameterDescription>
+                </edal:UrlParameter>
+            </edal:ExtendedRequest>
+            <edal:ExtendedRequest>
+                <edal:Request>GetMetadata</edal:Request>
+                <edal:RequestDescription>Fetches small pieces of metadata.  Many of these are also present in this capabilities document, but GetMetadata provides a more convenient method of accessing such data. GetMetadata always returns data in the JSON format</edal:RequestDescription>
+                <edal:UrlParameter>
+                    <edal:ParameterName>ITEM</edal:ParameterName>
+                    <edal:ParameterDescription>This specifies the metadata to return.  This can take the values:
+                        menu: Returns a tree representation of the available WMS layers, with IDs. Takes the optional parameter DATASET to return the same tree for a single dataset
+                        layerDetails: Returns a set of details needed to plot a given layer. This includes such data as units, layer bounding box, configured scale range, etc. Takes the parameters LAYERNAME and TIME. The TIME parameter is optional, and if it is specified then the nearest available time is returned as part of the layer's details.
+                        minmax: Calculates the range of values in the given area. Takes the same parameters as a GetMap request.
+                        timesteps: Returns the available times for a given day. Takes the parameters LAYERNAME and DAY (yyyy-mm-dd)
+                        animationTimesteps: Returns a list of time strings at different temporal resolutions for a given time range. This is used to present to the user different frequencies for the generation of an animation. Takes the parameters LAYERNAME, START, and END</edal:ParameterDescription>
+                </edal:UrlParameter>
+            </edal:ExtendedRequest>
+            <edal:ExtendedRequest>
+                <edal:Request>GetLegendGraphic</edal:Request>
+                <edal:RequestDescription>The GetLegendGraphic request generates an image which can be used as a legend. There are two main options: Generating just a colourbar, and generating a full legend.</edal:RequestDescription>
+                <edal:UrlParameter>
+                    <edal:ParameterName>COLORBARONLY</edal:ParameterName>
+                    <edal:ParameterDescription>"true" or "false".  Whether to generate a full legend or just the colour bar.  If it's "true", the following URL parameters are required:
+                        PALETTE: The name of the palette to use. If missing, set to "default"
+                        NUMCOLORBANDS: The number of colour bands to use. If missing, set to 250
+                        VERTICAL: Whether to very colours vertically. If missing, defaults to true
+                        WIDTH: The width of the image to generate. If missing, defaults to 50
+                        HEIGHT: The height of the image to generate. If missing, defaults to 200
+                    
+                    For a full legend, the additional parameters LAYERS and either STYLES, SLD, or SLD_BODY must be supplied. This is because a single WMS layer may depend on an arbitrary number of sub-layers, depending on the style it is plotted in. In addition to these parameters, the optional parameters controlling the style may be supplied (these are the same as documented in the GetMap request).  Note that for full legends, the supplied width and height are NOT the final height of the image, but rather the width and height of each individual coloured plot area (i.e. the 1d/2d colourbar)</edal:ParameterDescription>
+                </edal:UrlParameter>
+            </edal:ExtendedRequest>
+        </edal:ExtendedCapabilities>
+        <Layer>
+            <Title>Pacific Ocean Portal - THREDDS</Title>
+            <CRS>EPSG:4326</CRS>
+            <CRS>CRS:84</CRS>
+            <CRS>EPSG:41001</CRS>
+            <CRS>EPSG:27700</CRS>
+            <CRS>EPSG:3408</CRS>
+            <CRS>EPSG:3409</CRS>
+            <CRS>EPSG:3857</CRS>
+            <CRS>EPSG:5041</CRS>
+            <CRS>EPSG:5042</CRS>
+            <CRS>EPSG:32661</CRS>
+            <CRS>EPSG:32761</CRS>
+            <Layer>
+                <Title>CROCO model output interpolated to z-levels</Title>
+    <Layer queryable="1">
+        <Name>temperature</Name>
+        <Title>potential temperature</Title>
+        <Abstract>potential temperature</Abstract>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-172.1634979248047</westBoundLongitude>
+            <eastBoundLongitude>-165.84291076660156</eastBoundLongitude>
+            <southBoundLatitude>-22.654609684513026</southBoundLatitude>
+            <northBoundLatitude>-16.436661124726577</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="CRS:84" minx="-172.1634979248047" maxx="-165.84291076660156" miny="-22.654609684513026" maxy="-16.436661124726577"/>
+        <Dimension name="time" units="ISO8601" multipleValues="true" current="true" default="2026-05-04T23:49:20.000Z">
+            2026-05-01T00:00:00.000Z/2026-05-04T23:49:20.000Z/PT58M40S
+        </Dimension>
+        <Dimension name="elevation" units="ncwms:height" unitSymbol="m" default="-5.0">
+            -5.0,
+            -10.0,
+            -20.0,
+            -30.0,
+            -50.0,
+            -100.0,
+            -300.0,
+            -500.0,
+            -1000.0
+        </Dimension>
+        <Style>
+            <Name>default-scalar/default</Name>
+            <Title>default-scalar/default</Title>
+            <Abstract>default-scalar style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=temperature
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=temperature&amp;STYLES=default-scalar/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>anuj</Name>
+            <Title>anuj</Title>
+            <Abstract>anuj style</Abstract>
+        </Style>
+        <Style>
+            <Name>anuj11</Name>
+            <Title>anuj11</Title>
+            <Abstract>anuj11 style</Abstract>
+        </Style>
+        <Style>
+            <Name>anuj12</Name>
+            <Title>anuj12</Title>
+            <Abstract>anuj12 style</Abstract>
+        </Style>
+        <Style>
+            <Name>anuj6</Name>
+            <Title>anuj6</Title>
+            <Abstract>anuj6 style</Abstract>
+        </Style>
+        <Style>
+            <Name>arrow2</Name>
+            <Title>arrow2</Title>
+            <Abstract>arrow2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>black-arrow</Name>
+            <Title>black-arrow</Title>
+            <Abstract>black-arrow style</Abstract>
+        </Style>
+        <Style>
+            <Name>colored_contours/default</Name>
+            <Title>colored_contours/default</Title>
+            <Abstract>colored_contours style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=temperature
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=temperature&amp;STYLES=colored_contours/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>contours</Name>
+            <Title>contours</Title>
+            <Abstract>contours style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge</Name>
+            <Title>converge</Title>
+            <Abstract>converge style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge2</Name>
+            <Title>converge2</Title>
+            <Abstract>converge2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge44</Name>
+            <Title>converge44</Title>
+            <Abstract>converge44 style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge47</Name>
+            <Title>converge47</Title>
+            <Abstract>converge47 style</Abstract>
+        </Style>
+        <Style>
+            <Name>coral-alert</Name>
+            <Title>coral-alert</Title>
+            <Abstract>coral-alert style</Abstract>
+        </Style>
+        <Style>
+            <Name>coral-alert-final</Name>
+            <Title>coral-alert-final</Title>
+            <Abstract>coral-alert-final style</Abstract>
+        </Style>
+        <Style>
+            <Name>coral-alert2</Name>
+            <Title>coral-alert2</Title>
+            <Abstract>coral-alert2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile</Name>
+            <Title>decile</Title>
+            <Abstract>decile style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile2</Name>
+            <Title>decile2</Title>
+            <Abstract>decile2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile3</Name>
+            <Title>decile3</Title>
+            <Abstract>decile3 style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile5</Name>
+            <Title>decile5</Title>
+            <Abstract>decile5 style</Abstract>
+        </Style>
+        <Style>
+            <Name>discrete</Name>
+            <Title>discrete</Title>
+            <Abstract>discrete style</Abstract>
+        </Style>
+        <Style>
+            <Name>green_climate</Name>
+            <Title>green_climate</Title>
+            <Abstract>green_climate style</Abstract>
+        </Style>
+        <Style>
+            <Name>mhw</Name>
+            <Title>mhw</Title>
+            <Abstract>mhw style</Abstract>
+        </Style>
+        <Style>
+            <Name>mhw1</Name>
+            <Title>mhw1</Title>
+            <Abstract>mhw1 style</Abstract>
+        </Style>
+        <Style>
+            <Name>orange_converge</Name>
+            <Title>orange_converge</Title>
+            <Abstract>orange_converge style</Abstract>
+        </Style>
+        <Style>
+            <Name>raster/default</Name>
+            <Title>raster/default</Title>
+            <Abstract>raster style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=temperature
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=temperature&amp;STYLES=raster/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-contour/default</Name>
+            <Title>scalar-contour/default</Title>
+            <Abstract>scalar-contour style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=temperature
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=temperature&amp;STYLES=scalar-contour/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-contour-smooth/default</Name>
+            <Title>scalar-contour-smooth/default</Title>
+            <Abstract>scalar-contour-smooth style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=temperature
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=temperature&amp;STYLES=scalar-contour-smooth/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-contour_anuj/default</Name>
+            <Title>scalar-contour_anuj/default</Title>
+            <Abstract>scalar-contour_anuj style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=temperature
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=temperature&amp;STYLES=scalar-contour_anuj/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-converge/default</Name>
+            <Title>scalar-converge/default</Title>
+            <Abstract>scalar-converge style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=temperature
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=temperature&amp;STYLES=scalar-converge/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-converge-final/default</Name>
+            <Title>scalar-converge-final/default</Title>
+            <Abstract>scalar-converge-final style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=temperature
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=temperature&amp;STYLES=scalar-converge-final/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>test</Name>
+            <Title>test</Title>
+            <Abstract>test style</Abstract>
+        </Style>
+        <Style>
+            <Name>test2/default</Name>
+            <Title>test2/default</Title>
+            <Abstract>test2 style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=temperature
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=temperature&amp;STYLES=test2/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>white-arrow</Name>
+            <Title>white-arrow</Title>
+            <Abstract>white-arrow style</Abstract>
+        </Style>
+        <Style>
+            <Name>zz</Name>
+            <Title>zz</Title>
+            <Abstract>zz style</Abstract>
+        </Style>
+        <Style>
+            <Name>zz3</Name>
+            <Title>zz3</Title>
+            <Abstract>zz3 style</Abstract>
+        </Style>
+</Layer>
+    <Layer queryable="1">
+        <Name>salinity</Name>
+        <Title>salinity</Title>
+        <Abstract>salinity</Abstract>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-172.1634979248047</westBoundLongitude>
+            <eastBoundLongitude>-165.84291076660156</eastBoundLongitude>
+            <southBoundLatitude>-22.654609684513026</southBoundLatitude>
+            <northBoundLatitude>-16.436661124726577</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="CRS:84" minx="-172.1634979248047" maxx="-165.84291076660156" miny="-22.654609684513026" maxy="-16.436661124726577"/>
+        <Dimension name="time" units="ISO8601" multipleValues="true" current="true" default="2026-05-04T23:49:20.000Z">
+            2026-05-01T00:00:00.000Z/2026-05-04T23:49:20.000Z/PT58M40S
+        </Dimension>
+        <Dimension name="elevation" units="ncwms:height" unitSymbol="m" default="-5.0">
+            -5.0,
+            -10.0,
+            -20.0,
+            -30.0,
+            -50.0,
+            -100.0,
+            -300.0,
+            -500.0,
+            -1000.0
+        </Dimension>
+        <Style>
+            <Name>default-scalar/default</Name>
+            <Title>default-scalar/default</Title>
+            <Abstract>default-scalar style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=salinity
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=salinity&amp;STYLES=default-scalar/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>anuj</Name>
+            <Title>anuj</Title>
+            <Abstract>anuj style</Abstract>
+        </Style>
+        <Style>
+            <Name>anuj11</Name>
+            <Title>anuj11</Title>
+            <Abstract>anuj11 style</Abstract>
+        </Style>
+        <Style>
+            <Name>anuj12</Name>
+            <Title>anuj12</Title>
+            <Abstract>anuj12 style</Abstract>
+        </Style>
+        <Style>
+            <Name>anuj6</Name>
+            <Title>anuj6</Title>
+            <Abstract>anuj6 style</Abstract>
+        </Style>
+        <Style>
+            <Name>arrow2</Name>
+            <Title>arrow2</Title>
+            <Abstract>arrow2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>black-arrow</Name>
+            <Title>black-arrow</Title>
+            <Abstract>black-arrow style</Abstract>
+        </Style>
+        <Style>
+            <Name>colored_contours/default</Name>
+            <Title>colored_contours/default</Title>
+            <Abstract>colored_contours style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=salinity
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=salinity&amp;STYLES=colored_contours/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>contours</Name>
+            <Title>contours</Title>
+            <Abstract>contours style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge</Name>
+            <Title>converge</Title>
+            <Abstract>converge style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge2</Name>
+            <Title>converge2</Title>
+            <Abstract>converge2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge44</Name>
+            <Title>converge44</Title>
+            <Abstract>converge44 style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge47</Name>
+            <Title>converge47</Title>
+            <Abstract>converge47 style</Abstract>
+        </Style>
+        <Style>
+            <Name>coral-alert</Name>
+            <Title>coral-alert</Title>
+            <Abstract>coral-alert style</Abstract>
+        </Style>
+        <Style>
+            <Name>coral-alert-final</Name>
+            <Title>coral-alert-final</Title>
+            <Abstract>coral-alert-final style</Abstract>
+        </Style>
+        <Style>
+            <Name>coral-alert2</Name>
+            <Title>coral-alert2</Title>
+            <Abstract>coral-alert2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile</Name>
+            <Title>decile</Title>
+            <Abstract>decile style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile2</Name>
+            <Title>decile2</Title>
+            <Abstract>decile2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile3</Name>
+            <Title>decile3</Title>
+            <Abstract>decile3 style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile5</Name>
+            <Title>decile5</Title>
+            <Abstract>decile5 style</Abstract>
+        </Style>
+        <Style>
+            <Name>discrete</Name>
+            <Title>discrete</Title>
+            <Abstract>discrete style</Abstract>
+        </Style>
+        <Style>
+            <Name>green_climate</Name>
+            <Title>green_climate</Title>
+            <Abstract>green_climate style</Abstract>
+        </Style>
+        <Style>
+            <Name>mhw</Name>
+            <Title>mhw</Title>
+            <Abstract>mhw style</Abstract>
+        </Style>
+        <Style>
+            <Name>mhw1</Name>
+            <Title>mhw1</Title>
+            <Abstract>mhw1 style</Abstract>
+        </Style>
+        <Style>
+            <Name>orange_converge</Name>
+            <Title>orange_converge</Title>
+            <Abstract>orange_converge style</Abstract>
+        </Style>
+        <Style>
+            <Name>raster/default</Name>
+            <Title>raster/default</Title>
+            <Abstract>raster style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=salinity
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=salinity&amp;STYLES=raster/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-contour/default</Name>
+            <Title>scalar-contour/default</Title>
+            <Abstract>scalar-contour style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=salinity
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=salinity&amp;STYLES=scalar-contour/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-contour-smooth/default</Name>
+            <Title>scalar-contour-smooth/default</Title>
+            <Abstract>scalar-contour-smooth style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=salinity
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=salinity&amp;STYLES=scalar-contour-smooth/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-contour_anuj/default</Name>
+            <Title>scalar-contour_anuj/default</Title>
+            <Abstract>scalar-contour_anuj style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=salinity
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=salinity&amp;STYLES=scalar-contour_anuj/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-converge/default</Name>
+            <Title>scalar-converge/default</Title>
+            <Abstract>scalar-converge style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=salinity
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=salinity&amp;STYLES=scalar-converge/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-converge-final/default</Name>
+            <Title>scalar-converge-final/default</Title>
+            <Abstract>scalar-converge-final style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=salinity
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=salinity&amp;STYLES=scalar-converge-final/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>test</Name>
+            <Title>test</Title>
+            <Abstract>test style</Abstract>
+        </Style>
+        <Style>
+            <Name>test2/default</Name>
+            <Title>test2/default</Title>
+            <Abstract>test2 style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=salinity
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=salinity&amp;STYLES=test2/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>white-arrow</Name>
+            <Title>white-arrow</Title>
+            <Abstract>white-arrow style</Abstract>
+        </Style>
+        <Style>
+            <Name>zz</Name>
+            <Title>zz</Title>
+            <Abstract>zz style</Abstract>
+        </Style>
+        <Style>
+            <Name>zz3</Name>
+            <Title>zz3</Title>
+            <Abstract>zz3 style</Abstract>
+        </Style>
+</Layer>
+    <Layer >
+        <Title>sea_water_velocity</Title>
+        <Abstract>Vector fields for sea_water_velocity</Abstract>
+    <Layer queryable="1">
+        <Name>u:v-group</Name>
+        <Title>sea_water_velocity</Title>
+        <Abstract>Vector fields for sea_water_velocity</Abstract>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-172.1634979248047</westBoundLongitude>
+            <eastBoundLongitude>-165.84291076660156</eastBoundLongitude>
+            <southBoundLatitude>-22.654609684513026</southBoundLatitude>
+            <northBoundLatitude>-16.436661124726577</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="CRS:84" minx="-172.1634979248047" maxx="-165.84291076660156" miny="-22.654609684513026" maxy="-16.436661124726577"/>
+        <Dimension name="time" units="ISO8601" multipleValues="true" current="true" default="2026-05-04T23:49:20.000Z">
+            2026-05-01T00:00:00.000Z/2026-05-04T23:49:20.000Z/PT58M40S
+        </Dimension>
+        <Dimension name="elevation" units="ncwms:height" unitSymbol="m" default="-5.0">
+            -5.0,
+            -10.0,
+            -20.0,
+            -30.0,
+            -50.0,
+            -100.0,
+            -300.0,
+            -500.0,
+            -1000.0
+        </Dimension>
+        <Style>
+            <Name>default-vector/default</Name>
+            <Title>default-vector/default</Title>
+            <Abstract>default-vector style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-group
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-group&amp;STYLES=default-vector/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>colored_sized_arrows/default</Name>
+            <Title>colored_sized_arrows/default</Title>
+            <Abstract>colored_sized_arrows style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-group
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-group&amp;STYLES=colored_sized_arrows/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>colored_sized_meteorological_arrows/default</Name>
+            <Title>colored_sized_meteorological_arrows/default</Title>
+            <Abstract>colored_sized_meteorological_arrows style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-group
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-group&amp;STYLES=colored_sized_meteorological_arrows/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>colored_wind_barbs/default</Name>
+            <Title>colored_wind_barbs/default</Title>
+            <Abstract>colored_wind_barbs style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-group
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-group&amp;STYLES=colored_wind_barbs/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>met-arrows</Name>
+            <Title>met-arrows</Title>
+            <Abstract>met-arrows style</Abstract>
+        </Style>
+        <Style>
+            <Name>sized_arrows</Name>
+            <Title>sized_arrows</Title>
+            <Abstract>sized_arrows style</Abstract>
+        </Style>
+        <Style>
+            <Name>sized_meteorological_arrows</Name>
+            <Title>sized_meteorological_arrows</Title>
+            <Abstract>sized_meteorological_arrows style</Abstract>
+        </Style>
+        <Style>
+            <Name>vector_arrows/default</Name>
+            <Title>vector_arrows/default</Title>
+            <Abstract>vector_arrows style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-group
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-group&amp;STYLES=vector_arrows/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>vector_fat_arrows/default</Name>
+            <Title>vector_fat_arrows/default</Title>
+            <Abstract>vector_fat_arrows style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-group
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-group&amp;STYLES=vector_fat_arrows/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>vector_meterological_arrows/default</Name>
+            <Title>vector_meterological_arrows/default</Title>
+            <Abstract>vector_meterological_arrows style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-group
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-group&amp;STYLES=vector_meterological_arrows/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>vector_sized_arrows/default</Name>
+            <Title>vector_sized_arrows/default</Title>
+            <Abstract>vector_sized_arrows style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-group
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-group&amp;STYLES=vector_sized_arrows/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>vector_triangles/default</Name>
+            <Title>vector_triangles/default</Title>
+            <Abstract>vector_triangles style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-group
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-group&amp;STYLES=vector_triangles/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>vector_upstream_dots/default</Name>
+            <Title>vector_upstream_dots/default</Title>
+            <Abstract>vector_upstream_dots style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-group
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-group&amp;STYLES=vector_upstream_dots/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>vector_wind_barbs/default</Name>
+            <Title>vector_wind_barbs/default</Title>
+            <Abstract>vector_wind_barbs style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-group
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-group&amp;STYLES=vector_wind_barbs/default"/>
+            </LegendURL>
+        </Style>
+</Layer>
+    <Layer queryable="1">
+        <Name>u:v-mag</Name>
+        <Title>Magnitude of sea water velocity</Title>
+        <Abstract>Magnitude of components:
+u-momentum component at rho points and
+v-momentum component at rho points</Abstract>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-172.1634979248047</westBoundLongitude>
+            <eastBoundLongitude>-165.84291076660156</eastBoundLongitude>
+            <southBoundLatitude>-22.654609684513026</southBoundLatitude>
+            <northBoundLatitude>-16.436661124726577</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="CRS:84" minx="-172.1634979248047" maxx="-165.84291076660156" miny="-22.654609684513026" maxy="-16.436661124726577"/>
+        <Dimension name="time" units="ISO8601" multipleValues="true" current="true" default="2026-05-04T23:49:20.000Z">
+            2026-05-01T00:00:00.000Z/2026-05-04T23:49:20.000Z/PT58M40S
+        </Dimension>
+        <Dimension name="elevation" units="ncwms:height" unitSymbol="m" default="-5.0">
+            -5.0,
+            -10.0,
+            -20.0,
+            -30.0,
+            -50.0,
+            -100.0,
+            -300.0,
+            -500.0,
+            -1000.0
+        </Dimension>
+        <Style>
+            <Name>default-scalar/default</Name>
+            <Title>default-scalar/default</Title>
+            <Abstract>default-scalar style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-mag
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-mag&amp;STYLES=default-scalar/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>anuj</Name>
+            <Title>anuj</Title>
+            <Abstract>anuj style</Abstract>
+        </Style>
+        <Style>
+            <Name>anuj11</Name>
+            <Title>anuj11</Title>
+            <Abstract>anuj11 style</Abstract>
+        </Style>
+        <Style>
+            <Name>anuj12</Name>
+            <Title>anuj12</Title>
+            <Abstract>anuj12 style</Abstract>
+        </Style>
+        <Style>
+            <Name>anuj6</Name>
+            <Title>anuj6</Title>
+            <Abstract>anuj6 style</Abstract>
+        </Style>
+        <Style>
+            <Name>arrow2</Name>
+            <Title>arrow2</Title>
+            <Abstract>arrow2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>black-arrow</Name>
+            <Title>black-arrow</Title>
+            <Abstract>black-arrow style</Abstract>
+        </Style>
+        <Style>
+            <Name>colored_contours/default</Name>
+            <Title>colored_contours/default</Title>
+            <Abstract>colored_contours style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-mag
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-mag&amp;STYLES=colored_contours/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>contours</Name>
+            <Title>contours</Title>
+            <Abstract>contours style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge</Name>
+            <Title>converge</Title>
+            <Abstract>converge style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge2</Name>
+            <Title>converge2</Title>
+            <Abstract>converge2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge44</Name>
+            <Title>converge44</Title>
+            <Abstract>converge44 style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge47</Name>
+            <Title>converge47</Title>
+            <Abstract>converge47 style</Abstract>
+        </Style>
+        <Style>
+            <Name>coral-alert</Name>
+            <Title>coral-alert</Title>
+            <Abstract>coral-alert style</Abstract>
+        </Style>
+        <Style>
+            <Name>coral-alert-final</Name>
+            <Title>coral-alert-final</Title>
+            <Abstract>coral-alert-final style</Abstract>
+        </Style>
+        <Style>
+            <Name>coral-alert2</Name>
+            <Title>coral-alert2</Title>
+            <Abstract>coral-alert2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile</Name>
+            <Title>decile</Title>
+            <Abstract>decile style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile2</Name>
+            <Title>decile2</Title>
+            <Abstract>decile2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile3</Name>
+            <Title>decile3</Title>
+            <Abstract>decile3 style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile5</Name>
+            <Title>decile5</Title>
+            <Abstract>decile5 style</Abstract>
+        </Style>
+        <Style>
+            <Name>discrete</Name>
+            <Title>discrete</Title>
+            <Abstract>discrete style</Abstract>
+        </Style>
+        <Style>
+            <Name>green_climate</Name>
+            <Title>green_climate</Title>
+            <Abstract>green_climate style</Abstract>
+        </Style>
+        <Style>
+            <Name>mhw</Name>
+            <Title>mhw</Title>
+            <Abstract>mhw style</Abstract>
+        </Style>
+        <Style>
+            <Name>mhw1</Name>
+            <Title>mhw1</Title>
+            <Abstract>mhw1 style</Abstract>
+        </Style>
+        <Style>
+            <Name>orange_converge</Name>
+            <Title>orange_converge</Title>
+            <Abstract>orange_converge style</Abstract>
+        </Style>
+        <Style>
+            <Name>raster/default</Name>
+            <Title>raster/default</Title>
+            <Abstract>raster style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-mag
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-mag&amp;STYLES=raster/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-contour/default</Name>
+            <Title>scalar-contour/default</Title>
+            <Abstract>scalar-contour style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-mag
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-mag&amp;STYLES=scalar-contour/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-contour-smooth/default</Name>
+            <Title>scalar-contour-smooth/default</Title>
+            <Abstract>scalar-contour-smooth style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-mag
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-mag&amp;STYLES=scalar-contour-smooth/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-contour_anuj/default</Name>
+            <Title>scalar-contour_anuj/default</Title>
+            <Abstract>scalar-contour_anuj style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-mag
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-mag&amp;STYLES=scalar-contour_anuj/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-converge/default</Name>
+            <Title>scalar-converge/default</Title>
+            <Abstract>scalar-converge style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-mag
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-mag&amp;STYLES=scalar-converge/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-converge-final/default</Name>
+            <Title>scalar-converge-final/default</Title>
+            <Abstract>scalar-converge-final style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-mag
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-mag&amp;STYLES=scalar-converge-final/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>test</Name>
+            <Title>test</Title>
+            <Abstract>test style</Abstract>
+        </Style>
+        <Style>
+            <Name>test2/default</Name>
+            <Title>test2/default</Title>
+            <Abstract>test2 style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u:v-mag
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u:v-mag&amp;STYLES=test2/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>white-arrow</Name>
+            <Title>white-arrow</Title>
+            <Abstract>white-arrow style</Abstract>
+        </Style>
+        <Style>
+            <Name>zz</Name>
+            <Title>zz</Title>
+            <Abstract>zz style</Abstract>
+        </Style>
+        <Style>
+            <Name>zz3</Name>
+            <Title>zz3</Title>
+            <Abstract>zz3 style</Abstract>
+        </Style>
+</Layer>
+    <Layer queryable="1">
+        <Name>u:v-dir</Name>
+        <Title>Direction of sea water velocity</Title>
+        <Abstract>Direction of components:
+u-momentum component at rho points and
+v-momentum component at rho points</Abstract>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-172.1634979248047</westBoundLongitude>
+            <eastBoundLongitude>-165.84291076660156</eastBoundLongitude>
+            <southBoundLatitude>-22.654609684513026</southBoundLatitude>
+            <northBoundLatitude>-16.436661124726577</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="CRS:84" minx="-172.1634979248047" maxx="-165.84291076660156" miny="-22.654609684513026" maxy="-16.436661124726577"/>
+        <Dimension name="time" units="ISO8601" multipleValues="true" current="true" default="2026-05-04T23:49:20.000Z">
+            2026-05-01T00:00:00.000Z/2026-05-04T23:49:20.000Z/PT58M40S
+        </Dimension>
+        <Dimension name="elevation" units="ncwms:height" unitSymbol="m" default="-5.0">
+            -5.0,
+            -10.0,
+            -20.0,
+            -30.0,
+            -50.0,
+            -100.0,
+            -300.0,
+            -500.0,
+            -1000.0
+        </Dimension>
+        <Style>
+            <Name>default-arrows</Name>
+            <Title>default-arrows</Title>
+            <Abstract>default-arrows style</Abstract>
+        </Style>
+        <Style>
+            <Name>arrow</Name>
+            <Title>arrow</Title>
+            <Abstract>arrow style</Abstract>
+        </Style>
+        <Style>
+            <Name>arrow2</Name>
+            <Title>arrow2</Title>
+            <Abstract>arrow2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>arrows</Name>
+            <Title>arrows</Title>
+            <Abstract>arrows style</Abstract>
+        </Style>
+        <Style>
+            <Name>black-arrow</Name>
+            <Title>black-arrow</Title>
+            <Abstract>black-arrow style</Abstract>
+        </Style>
+        <Style>
+            <Name>fat_arrows</Name>
+            <Title>fat_arrows</Title>
+            <Abstract>fat_arrows style</Abstract>
+        </Style>
+        <Style>
+            <Name>meteorological_arrows</Name>
+            <Title>meteorological_arrows</Title>
+            <Abstract>meteorological_arrows style</Abstract>
+        </Style>
+        <Style>
+            <Name>meteorological_fat_arrows</Name>
+            <Title>meteorological_fat_arrows</Title>
+            <Abstract>meteorological_fat_arrows style</Abstract>
+        </Style>
+        <Style>
+            <Name>meteorological_triangle_arrows</Name>
+            <Title>meteorological_triangle_arrows</Title>
+            <Abstract>meteorological_triangle_arrows style</Abstract>
+        </Style>
+        <Style>
+            <Name>triangle_arrows</Name>
+            <Title>triangle_arrows</Title>
+            <Abstract>triangle_arrows style</Abstract>
+        </Style>
+        <Style>
+            <Name>upstream_dots</Name>
+            <Title>upstream_dots</Title>
+            <Abstract>upstream_dots style</Abstract>
+        </Style>
+        <Style>
+            <Name>white-arrow</Name>
+            <Title>white-arrow</Title>
+            <Abstract>white-arrow style</Abstract>
+        </Style>
+</Layer>
+    <Layer queryable="1">
+        <Name>u</Name>
+        <Title>u-momentum component at rho points</Title>
+        <Abstract>u-momentum component at rho points</Abstract>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-172.1634979248047</westBoundLongitude>
+            <eastBoundLongitude>-165.84291076660156</eastBoundLongitude>
+            <southBoundLatitude>-22.654609684513026</southBoundLatitude>
+            <northBoundLatitude>-16.436661124726577</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="CRS:84" minx="-172.1634979248047" maxx="-165.84291076660156" miny="-22.654609684513026" maxy="-16.436661124726577"/>
+        <Dimension name="time" units="ISO8601" multipleValues="true" current="true" default="2026-05-04T23:49:20.000Z">
+            2026-05-01T00:00:00.000Z/2026-05-04T23:49:20.000Z/PT58M40S
+        </Dimension>
+        <Dimension name="elevation" units="ncwms:height" unitSymbol="m" default="-5.0">
+            -5.0,
+            -10.0,
+            -20.0,
+            -30.0,
+            -50.0,
+            -100.0,
+            -300.0,
+            -500.0,
+            -1000.0
+        </Dimension>
+        <Style>
+            <Name>default-scalar/default</Name>
+            <Title>default-scalar/default</Title>
+            <Abstract>default-scalar style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u&amp;STYLES=default-scalar/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>anuj</Name>
+            <Title>anuj</Title>
+            <Abstract>anuj style</Abstract>
+        </Style>
+        <Style>
+            <Name>anuj11</Name>
+            <Title>anuj11</Title>
+            <Abstract>anuj11 style</Abstract>
+        </Style>
+        <Style>
+            <Name>anuj12</Name>
+            <Title>anuj12</Title>
+            <Abstract>anuj12 style</Abstract>
+        </Style>
+        <Style>
+            <Name>anuj6</Name>
+            <Title>anuj6</Title>
+            <Abstract>anuj6 style</Abstract>
+        </Style>
+        <Style>
+            <Name>arrow2</Name>
+            <Title>arrow2</Title>
+            <Abstract>arrow2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>black-arrow</Name>
+            <Title>black-arrow</Title>
+            <Abstract>black-arrow style</Abstract>
+        </Style>
+        <Style>
+            <Name>colored_contours/default</Name>
+            <Title>colored_contours/default</Title>
+            <Abstract>colored_contours style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u&amp;STYLES=colored_contours/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>contours</Name>
+            <Title>contours</Title>
+            <Abstract>contours style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge</Name>
+            <Title>converge</Title>
+            <Abstract>converge style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge2</Name>
+            <Title>converge2</Title>
+            <Abstract>converge2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge44</Name>
+            <Title>converge44</Title>
+            <Abstract>converge44 style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge47</Name>
+            <Title>converge47</Title>
+            <Abstract>converge47 style</Abstract>
+        </Style>
+        <Style>
+            <Name>coral-alert</Name>
+            <Title>coral-alert</Title>
+            <Abstract>coral-alert style</Abstract>
+        </Style>
+        <Style>
+            <Name>coral-alert-final</Name>
+            <Title>coral-alert-final</Title>
+            <Abstract>coral-alert-final style</Abstract>
+        </Style>
+        <Style>
+            <Name>coral-alert2</Name>
+            <Title>coral-alert2</Title>
+            <Abstract>coral-alert2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile</Name>
+            <Title>decile</Title>
+            <Abstract>decile style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile2</Name>
+            <Title>decile2</Title>
+            <Abstract>decile2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile3</Name>
+            <Title>decile3</Title>
+            <Abstract>decile3 style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile5</Name>
+            <Title>decile5</Title>
+            <Abstract>decile5 style</Abstract>
+        </Style>
+        <Style>
+            <Name>discrete</Name>
+            <Title>discrete</Title>
+            <Abstract>discrete style</Abstract>
+        </Style>
+        <Style>
+            <Name>green_climate</Name>
+            <Title>green_climate</Title>
+            <Abstract>green_climate style</Abstract>
+        </Style>
+        <Style>
+            <Name>mhw</Name>
+            <Title>mhw</Title>
+            <Abstract>mhw style</Abstract>
+        </Style>
+        <Style>
+            <Name>mhw1</Name>
+            <Title>mhw1</Title>
+            <Abstract>mhw1 style</Abstract>
+        </Style>
+        <Style>
+            <Name>orange_converge</Name>
+            <Title>orange_converge</Title>
+            <Abstract>orange_converge style</Abstract>
+        </Style>
+        <Style>
+            <Name>raster/default</Name>
+            <Title>raster/default</Title>
+            <Abstract>raster style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u&amp;STYLES=raster/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-contour/default</Name>
+            <Title>scalar-contour/default</Title>
+            <Abstract>scalar-contour style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u&amp;STYLES=scalar-contour/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-contour-smooth/default</Name>
+            <Title>scalar-contour-smooth/default</Title>
+            <Abstract>scalar-contour-smooth style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u&amp;STYLES=scalar-contour-smooth/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-contour_anuj/default</Name>
+            <Title>scalar-contour_anuj/default</Title>
+            <Abstract>scalar-contour_anuj style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u&amp;STYLES=scalar-contour_anuj/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-converge/default</Name>
+            <Title>scalar-converge/default</Title>
+            <Abstract>scalar-converge style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u&amp;STYLES=scalar-converge/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-converge-final/default</Name>
+            <Title>scalar-converge-final/default</Title>
+            <Abstract>scalar-converge-final style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u&amp;STYLES=scalar-converge-final/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>test</Name>
+            <Title>test</Title>
+            <Abstract>test style</Abstract>
+        </Style>
+        <Style>
+            <Name>test2/default</Name>
+            <Title>test2/default</Title>
+            <Abstract>test2 style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=u
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=u&amp;STYLES=test2/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>white-arrow</Name>
+            <Title>white-arrow</Title>
+            <Abstract>white-arrow style</Abstract>
+        </Style>
+        <Style>
+            <Name>zz</Name>
+            <Title>zz</Title>
+            <Abstract>zz style</Abstract>
+        </Style>
+        <Style>
+            <Name>zz3</Name>
+            <Title>zz3</Title>
+            <Abstract>zz3 style</Abstract>
+        </Style>
+</Layer>
+    <Layer queryable="1">
+        <Name>v</Name>
+        <Title>v-momentum component at rho points</Title>
+        <Abstract>v-momentum component at rho points</Abstract>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-172.1634979248047</westBoundLongitude>
+            <eastBoundLongitude>-165.84291076660156</eastBoundLongitude>
+            <southBoundLatitude>-22.654609684513026</southBoundLatitude>
+            <northBoundLatitude>-16.436661124726577</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="CRS:84" minx="-172.1634979248047" maxx="-165.84291076660156" miny="-22.654609684513026" maxy="-16.436661124726577"/>
+        <Dimension name="time" units="ISO8601" multipleValues="true" current="true" default="2026-05-04T23:49:20.000Z">
+            2026-05-01T00:00:00.000Z/2026-05-04T23:49:20.000Z/PT58M40S
+        </Dimension>
+        <Dimension name="elevation" units="ncwms:height" unitSymbol="m" default="-5.0">
+            -5.0,
+            -10.0,
+            -20.0,
+            -30.0,
+            -50.0,
+            -100.0,
+            -300.0,
+            -500.0,
+            -1000.0
+        </Dimension>
+        <Style>
+            <Name>default-scalar/default</Name>
+            <Title>default-scalar/default</Title>
+            <Abstract>default-scalar style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=v
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=v&amp;STYLES=default-scalar/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>anuj</Name>
+            <Title>anuj</Title>
+            <Abstract>anuj style</Abstract>
+        </Style>
+        <Style>
+            <Name>anuj11</Name>
+            <Title>anuj11</Title>
+            <Abstract>anuj11 style</Abstract>
+        </Style>
+        <Style>
+            <Name>anuj12</Name>
+            <Title>anuj12</Title>
+            <Abstract>anuj12 style</Abstract>
+        </Style>
+        <Style>
+            <Name>anuj6</Name>
+            <Title>anuj6</Title>
+            <Abstract>anuj6 style</Abstract>
+        </Style>
+        <Style>
+            <Name>arrow2</Name>
+            <Title>arrow2</Title>
+            <Abstract>arrow2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>black-arrow</Name>
+            <Title>black-arrow</Title>
+            <Abstract>black-arrow style</Abstract>
+        </Style>
+        <Style>
+            <Name>colored_contours/default</Name>
+            <Title>colored_contours/default</Title>
+            <Abstract>colored_contours style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=v
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=v&amp;STYLES=colored_contours/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>contours</Name>
+            <Title>contours</Title>
+            <Abstract>contours style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge</Name>
+            <Title>converge</Title>
+            <Abstract>converge style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge2</Name>
+            <Title>converge2</Title>
+            <Abstract>converge2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge44</Name>
+            <Title>converge44</Title>
+            <Abstract>converge44 style</Abstract>
+        </Style>
+        <Style>
+            <Name>converge47</Name>
+            <Title>converge47</Title>
+            <Abstract>converge47 style</Abstract>
+        </Style>
+        <Style>
+            <Name>coral-alert</Name>
+            <Title>coral-alert</Title>
+            <Abstract>coral-alert style</Abstract>
+        </Style>
+        <Style>
+            <Name>coral-alert-final</Name>
+            <Title>coral-alert-final</Title>
+            <Abstract>coral-alert-final style</Abstract>
+        </Style>
+        <Style>
+            <Name>coral-alert2</Name>
+            <Title>coral-alert2</Title>
+            <Abstract>coral-alert2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile</Name>
+            <Title>decile</Title>
+            <Abstract>decile style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile2</Name>
+            <Title>decile2</Title>
+            <Abstract>decile2 style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile3</Name>
+            <Title>decile3</Title>
+            <Abstract>decile3 style</Abstract>
+        </Style>
+        <Style>
+            <Name>decile5</Name>
+            <Title>decile5</Title>
+            <Abstract>decile5 style</Abstract>
+        </Style>
+        <Style>
+            <Name>discrete</Name>
+            <Title>discrete</Title>
+            <Abstract>discrete style</Abstract>
+        </Style>
+        <Style>
+            <Name>green_climate</Name>
+            <Title>green_climate</Title>
+            <Abstract>green_climate style</Abstract>
+        </Style>
+        <Style>
+            <Name>mhw</Name>
+            <Title>mhw</Title>
+            <Abstract>mhw style</Abstract>
+        </Style>
+        <Style>
+            <Name>mhw1</Name>
+            <Title>mhw1</Title>
+            <Abstract>mhw1 style</Abstract>
+        </Style>
+        <Style>
+            <Name>orange_converge</Name>
+            <Title>orange_converge</Title>
+            <Abstract>orange_converge style</Abstract>
+        </Style>
+        <Style>
+            <Name>raster/default</Name>
+            <Title>raster/default</Title>
+            <Abstract>raster style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=v
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=v&amp;STYLES=raster/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-contour/default</Name>
+            <Title>scalar-contour/default</Title>
+            <Abstract>scalar-contour style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=v
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=v&amp;STYLES=scalar-contour/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-contour-smooth/default</Name>
+            <Title>scalar-contour-smooth/default</Title>
+            <Abstract>scalar-contour-smooth style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=v
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=v&amp;STYLES=scalar-contour-smooth/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-contour_anuj/default</Name>
+            <Title>scalar-contour_anuj/default</Title>
+            <Abstract>scalar-contour_anuj style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=v
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=v&amp;STYLES=scalar-contour_anuj/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-converge/default</Name>
+            <Title>scalar-converge/default</Title>
+            <Abstract>scalar-converge style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=v
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=v&amp;STYLES=scalar-converge/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>scalar-converge-final/default</Name>
+            <Title>scalar-converge-final/default</Title>
+            <Abstract>scalar-converge-final style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=v
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=v&amp;STYLES=scalar-converge-final/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>test</Name>
+            <Title>test</Title>
+            <Abstract>test style</Abstract>
+        </Style>
+        <Style>
+            <Name>test2/default</Name>
+            <Title>test2/default</Title>
+            <Abstract>test2 style, using the default palette.  Available palettes can be found in the response to https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?request=GetMetadata&amp;item=layerDetails&amp;layerName=v
+            </Abstract>
+            <LegendURL width="110" height="264">
+                <Format>image/png</Format>
+                <OnlineResource xlink:type="simple" xlink:href="https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc?REQUEST=GetLegendGraphic&amp;PALETTE=default&amp;LAYERS=v&amp;STYLES=test2/default"/>
+            </LegendURL>
+        </Style>
+        <Style>
+            <Name>white-arrow</Name>
+            <Title>white-arrow</Title>
+            <Abstract>white-arrow style</Abstract>
+        </Style>
+        <Style>
+            <Name>zz</Name>
+            <Title>zz</Title>
+            <Abstract>zz style</Abstract>
+        </Style>
+        <Style>
+            <Name>zz3</Name>
+            <Title>zz3</Title>
+            <Abstract>zz3 style</Abstract>
+        </Style>
+</Layer>
+</Layer>
+            </Layer>
+        </Layer>
+    </Capability>
+</WMS_Capabilities>
+
