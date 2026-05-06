@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from "react";
 import Map from "react-map-gl/maplibre";
 import { DeckGL } from "@deck.gl/react";
 import { TileLayer } from "@deck.gl/geo-layers";
-import { BitmapLayer } from "@deck.gl/layers";
+import { BitmapLayer, ScatterplotLayer } from "@deck.gl/layers";
 import type { MapViewState } from "@deck.gl/core";
 import type { DepthLevel, LayerState, ProbePoint } from "./OceanViewer";
 
@@ -27,7 +27,7 @@ const LAYER_WMS: Record<RasterKey, string> = {
   velocity: "u:v-group",
 };
 const LAYER_STYLE: Record<RasterKey, string> = {
-  temperature: "raster/psu-viridis",
+  temperature: "raster/div-RdBu-inv",
   salinity: "raster/div-BuRd",
   velocity: "default-vector",
 };
@@ -45,7 +45,7 @@ interface LegendConfig {
 const LAYER_LEGEND: Record<RasterKey, LegendConfig> = {
   temperature: {
     label: "Temperature (°C)",
-    gradient: "linear-gradient(to right,#440154,#31688e,#35b779,#fde725)",
+    gradient: "linear-gradient(to right,#042333,#2c3e81,#13a7ba,#5bb97e,#c4a94b,#e38c2f,#fdfdcc)",
     ticks: ["24", "26", "28", "30"],
   },
   salinity: {
@@ -149,6 +149,7 @@ export default function MapPanel({
   layers,
   depth,
   currentTime,
+  probePoint,
   onProbePointChange,
 }: Props) {
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW);
@@ -204,6 +205,25 @@ export default function MapPanel({
     [layers.temperature, layers.salinity, layers.velocity, depth, currentTime, rasterOpacity]
   );
 
+  const markerLayer = useMemo(
+    () =>
+      probePoint
+        ? new ScatterplotLayer({
+            id: "probe-marker",
+            data: [probePoint],
+            getPosition: (d: ProbePoint) => [d.lon, d.lat],
+            getRadius: 8,
+            radiusUnits: "pixels" as const,
+            getFillColor: [255, 255, 255, 220],
+            getLineColor: [59, 130, 246, 255],
+            stroked: true,
+            lineWidthMinPixels: 2,
+            pickable: false,
+          })
+        : null,
+    [probePoint]
+  );
+
   const handleMapClick = useCallback(
     (info: { coordinate?: number[] | null }) => {
       if (!info.coordinate) return;
@@ -238,7 +258,7 @@ export default function MapPanel({
       <DeckGL
         viewState={viewState}
         controller={true}
-        layers={deckLayers}
+        layers={[...deckLayers, ...(markerLayer ? [markerLayer] : [])]}
         onViewStateChange={({ viewState: vs }) =>
           setViewState(vs as MapViewState)
         }

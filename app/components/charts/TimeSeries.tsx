@@ -120,6 +120,18 @@ export default function TimeSeries({
     );
   }
 
+  const yMin =
+    layer === "u"
+      ? -2
+      : data.length > 0
+      ? Math.floor(Math.min(...data.map((d) => d.value)))
+      : layer === "temperature"
+      ? 22
+      : layer === "salinity"
+      ? 32
+      : "auto";
+  const yMax = layer === "u" ? 2 : "auto";
+
   return (
     <ResponsiveContainer width="100%" height={155}>
       <LineChart data={data} margin={{ top: 8, right: 16, bottom: 20, left: 24 }}>
@@ -130,6 +142,7 @@ export default function TimeSeries({
           label={{ value: "Forecast time", position: "insideBottomRight", fill: "#94a3b8", fontSize: 10, dy: 12 }}
         />
         <YAxis
+          domain={[yMin, yMax]}
           tick={{ fill: "#94a3b8", fontSize: 10 }}
           label={{ value: label, angle: -90, position: "insideLeft", fill: "#94a3b8", fontSize: 10, dx: -10 }}
         />

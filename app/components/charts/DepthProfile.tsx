@@ -124,6 +124,7 @@ export default function DepthProfile({
         <XAxis
           type="number"
           dataKey="value"
+          domain={layer === "u" ? [-2, 2] : layer === "salinity" ? [32, "auto"] : ["auto", "auto"]}
           tick={{ fill: "#94a3b8", fontSize: 10 }}
           label={{ value: label, position: "insideBottom", fill: "#94a3b8", fontSize: 10, dy: 12 }}
         />

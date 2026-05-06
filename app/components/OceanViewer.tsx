@@ -119,7 +119,12 @@ export default function OceanViewer() {
 
   const setLayerToggle = useCallback(
     (key: keyof LayerState, value: boolean) =>
-      setState((s) => ({ ...s, layers: { ...s.layers, [key]: value } })),
+      setState((s) => ({
+        ...s,
+        layers: value
+          ? { temperature: false, salinity: false, velocity: false, [key]: true }
+          : { ...s.layers, [key]: false },
+      })),
     []
   );
 

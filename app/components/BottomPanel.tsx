@@ -20,12 +20,31 @@ export default function BottomPanel({
   currentTime,
   availableTimes,
 }: Props) {
-  // Pick primary variable for profile/timeseries: salinity-only → salinity, else temperature
-  const primaryLayer = !layers.temperature && layers.salinity ? "salinity" : "temperature";
+  // Pick primary variable for profile/timeseries
+  const primaryLayer = layers.velocity
+    ? "u"
+    : !layers.temperature && layers.salinity
+    ? "salinity"
+    : "temperature";
   const layer = primaryLayer;
-  const label = primaryLayer === "salinity" ? "Salinity (PSU)" : "Temp (°C)";
-  const depthSubtitle = primaryLayer === "salinity" ? "Salinity vs depth" : "Temp vs depth";
-  const timeSubtitle = primaryLayer === "salinity" ? "Surface salinity · 72h" : "Surface temp · 72h";
+  const label =
+    primaryLayer === "salinity"
+      ? "Salinity (PSU)"
+      : primaryLayer === "u"
+      ? "U-velocity (m/s)"
+      : "Temp (°C)";
+  const depthSubtitle =
+    primaryLayer === "salinity"
+      ? "Salinity vs depth"
+      : primaryLayer === "u"
+      ? "Velocity vs depth"
+      : "Temp vs depth";
+  const timeSubtitle =
+    primaryLayer === "salinity"
+      ? "Surface salinity · 72h"
+      : primaryLayer === "u"
+      ? "Surface velocity · 72h"
+      : "Surface temp · 72h";
 
 
   return (

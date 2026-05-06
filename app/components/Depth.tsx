@@ -6,7 +6,7 @@ import type { DepthLevel } from "./OceanViewer";
 const DEPTH_LEVELS: DepthLevel[] = [-5, -10, -20, -30, -50, -100, -300, -500, -1000];
 
 const DEPTH_ZONES: Record<number, string> = {
-  5: "sunlight zone", 10: "sunlight zone", 20: "sunlight zone", 30: "sunlight zone",
+  5: "euphotic zone", 10: "euphotic zone", 20: "euphotic zone", 30: "euphotic zone",
   50: "mesopelagic zone", 100: "mesopelagic zone", 300: "bathypelagic zone",
   500: "bathypelagic zone", 1000: "abyssal zone",
 };

@@ -291,7 +291,7 @@ export default function TimeStep({ timeIndex, availableTimes, depth, onTimeIndex
       {/* Ribbon */}
       <div style={{ padding: "7px 12px 0" }}>
         <div style={{ fontSize: 8, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.18)", marginBottom: 3 }}>
-          drag to scrub
+          drag to scroll through time
         </div>
         <div
           ref={ribbonRef}
@@ -334,7 +334,7 @@ export default function TimeStep({ timeIndex, availableTimes, depth, onTimeIndex
       {/* Depth cycle indicator */}
       <div style={{ padding: "0 12px 7px" }}>
         <div style={{ fontSize: 8, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)", marginBottom: 3 }}>
-          depth cycle
+          depth level
         </div>
         <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
           {DEPTH_LEVELS.map((d, i) => (
