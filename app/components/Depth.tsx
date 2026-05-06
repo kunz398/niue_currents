@@ -92,7 +92,7 @@ export default function Depth({ depth, onDepthChange }: Props) {
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: "#0d1b2a" }}>
       <div className="px-3 py-2 border-b border-white/5">
-        <div className="text-[9px] tracking-widest text-white/30 uppercase mb-0.5">depth</div>
+        <div className="text-[9px] tracking-widest text-white/30 uppercase mb-0.5">select depth</div>
         <div className="flex items-baseline gap-1.5">
           <div className="text-lg font-medium tracking-tight" style={{ color: "#7dd3fc" }}>
             -{Math.abs(depth)}<span className="text-[10px] text-white/30 font-normal ml-0.5">m</span>

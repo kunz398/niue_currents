@@ -84,7 +84,7 @@ export default function LayersPanel({
       {/* DEPTH */}
       <section>
         <h3 className="text-[10px] font-semibold tracking-widest text-slate-500 uppercase mb-3">
-          Select Depth
+          {/* Select Depth */}
         </h3>
         <Depth depth={depth} onDepthChange={onDepthChange} />
       </section>

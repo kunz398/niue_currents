@@ -45,7 +45,7 @@ interface LegendConfig {
 const LAYER_LEGEND: Record<RasterKey, LegendConfig> = {
   temperature: {
     label: "Temperature (°C)",
-    gradient: "linear-gradient(to right,#042333,#2c3e81,#13a7ba,#5bb97e,#c4a94b,#e38c2f,#fdfdcc)",
+    gradient: "linear-gradient(to right,#2166ac,#d1e5f0,#f7f7f7,#fddbc7,#d6604d)",
     ticks: ["24", "26", "28", "30"],
   },
   salinity: {
