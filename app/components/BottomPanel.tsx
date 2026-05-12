@@ -55,7 +55,11 @@ export default function BottomPanel({
           <p className="text-[9px] font-semibold tracking-widest text-slate-500 uppercase">
             Depth Profile
           </p>
-          <p className="text-xs font-medium text-slate-300">{depthSubtitle}</p>
+          <p className="text-xs font-medium text-slate-300">
+            {primaryLayer === "u" ? (
+              <><span style={{ color: "#ef4444" }}>U</span> &amp; <span style={{ color: "#60a5fa" }}>V</span> velocity vs depth</>
+            ) : depthSubtitle}
+          </p>
         </div>
         <div className="flex-1 min-h-0 overflow-hidden">
           <DepthProfile
