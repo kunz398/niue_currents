@@ -33,7 +33,7 @@ const LAYER_STYLE: Record<RasterKey, string> = {
 };
 const LAYER_COLORSCALE: Record<RasterKey, string> = {
   temperature: "24,30",
-  salinity: "34,37",
+  salinity: "34,36",
   velocity: "0.0001,0.4237",
 };
 
@@ -51,7 +51,7 @@ const LAYER_LEGEND: Record<RasterKey, LegendConfig> = {
   salinity: {
     label: "Salinity (PSU)",
     gradient: "linear-gradient(to right,#2166ac,#f7f7f7,#d6604d)",
-    ticks: ["34", "35", "36", "37"],
+    ticks: ["34", "34.5", "35", "35.5", "36"],
   },
   velocity: {
     label: "Velocity (m/s)",
