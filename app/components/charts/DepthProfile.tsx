@@ -10,25 +10,13 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import type { DepthLevel, ProbePoint } from "../OceanViewer";
+import type { ProbePoint } from "../OceanViewer";
 
 interface ProfilePoint {
   depth: number;
   value: number;
+  value2?: number;
 }
-
-// Depth colour scale (matches depth picker colours roughly)
-const DEPTH_COLOURS: Record<number, string> = {
-  "-5": "#ef4444",
-  "-10": "#f97316",
-  "-20": "#eab308",
-  "-30": "#22c55e",
-  "-50": "#14b8a6",
-  "-100": "#3b82f6",
-  "-300": "#8b5cf6",
-  "-500": "#ec4899",
-  "-1000": "#94a3b8",
-};
 
 interface Props {
   probePoint: ProbePoint | null;
@@ -55,36 +43,55 @@ export default function DepthProfile({
     const abortCtrl = new AbortController();
     const timer = setTimeout(() => {
       setLoading(true);
-    const params = new URLSearchParams({
-      lon: String(probePoint.lon),
-      lat: String(probePoint.lat),
-      time: currentTime,
-      layer,
-    });
-    fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/profile?${params.toString()}`, { signal: abortCtrl.signal })
-      .then((r) => r.json())
-      .then((json) => {
-        // Handle ncWMS vertical profile response shapes
-        let points: ProfilePoint[] = [];
-        if (Array.isArray(json)) {
-          points = json.map((p: { depth?: number; z?: number; value?: number; elevation?: number }) => ({
-            depth: p.depth ?? p.z ?? p.elevation ?? 0,
-            value: p.value ?? 0,
-          }));
-        } else if (json?.domain?.axes?.z && json?.ranges) {
-          const zVals: number[] = json.domain.axes.z.values ?? [];
-          const rangeValues: number[] = Object.values<{ values: number[] }>(json.ranges)[0]?.values ?? [];
-          points = zVals.map((z: number, i: number) => ({ depth: z, value: rangeValues[i] ?? 0 }));
-        } else if (json?.data) {
-          points = Object.entries(json.data).map(([z, v]) => ({
-            depth: parseFloat(z),
-            value: v as number,
-          }));
-        }
-        setData(points.sort((a, b) => a.depth - b.depth));
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+
+      function fetchLayer(lyr: string): Promise<ProfilePoint[]> {
+        const params = new URLSearchParams({
+          lon: String(probePoint!.lon),
+          lat: String(probePoint!.lat),
+          time: currentTime!,
+          layer: lyr,
+        });
+        return fetch(
+          `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/profile?${params.toString()}`,
+          { signal: abortCtrl.signal }
+        )
+          .then((r) => r.json())
+          .then((json) => {
+            let points: ProfilePoint[] = [];
+            if (Array.isArray(json)) {
+              points = json.map((p: { depth?: number; z?: number; value?: number; elevation?: number }) => ({
+                depth: p.depth ?? p.z ?? p.elevation ?? 0,
+                value: p.value ?? 0,
+              }));
+            } else if (json?.domain?.axes?.z && json?.ranges) {
+              const zVals: number[] = json.domain.axes.z.values ?? [];
+              const rangeValues: number[] = Object.values<{ values: number[] }>(json.ranges)[0]?.values ?? [];
+              points = zVals.map((z: number, i: number) => ({ depth: z, value: rangeValues[i] ?? 0 }));
+            } else if (json?.data) {
+              points = Object.entries(json.data).map(([z, v]) => ({
+                depth: parseFloat(z),
+                value: v as number,
+              }));
+            }
+            return points.sort((a, b) => a.depth - b.depth);
+          });
+      }
+
+      const fetchU = fetchLayer(layer);
+      const fetchV = layer === "u" ? fetchLayer("v") : Promise.resolve(null);
+
+      Promise.all([fetchU, fetchV])
+        .then(([uPts, vPts]) => {
+          if (vPts) {
+            // Merge v values onto u points by matching depth
+            const vMap = new Map(vPts.map((p) => [p.depth, p.value]));
+            setData(uPts.map((p) => ({ ...p, value2: vMap.get(p.depth) })));
+          } else {
+            setData(uPts);
+          }
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
     }, 600);
     return () => { clearTimeout(timer); abortCtrl.abort(); };
   }, [probePoint, currentTime, layer]);
@@ -126,7 +133,7 @@ export default function DepthProfile({
           dataKey="value"
           domain={layer === "u" ? [-2, 2] : layer === "salinity" ? [32, "auto"] : ["auto", "auto"]}
           tick={{ fill: "#94a3b8", fontSize: 10 }}
-          label={{ value: label, position: "insideBottom", fill: "#94a3b8", fontSize: 10, dy: 12 }}
+          label={{ value: layer === "u" ? "Velocity (m/s)" : label, position: "insideBottom", fill: "#94a3b8", fontSize: 10, dy: 12 }}
         />
         <YAxis
           type="number"
@@ -139,16 +146,27 @@ export default function DepthProfile({
           contentStyle={{ background: "#1a1f2e", border: "1px solid #2d3748", fontSize: 11 }}
           labelStyle={{ color: "#94a3b8" }}
           itemStyle={{ color: "#e2e8f0" }}
-          formatter={(v: unknown) => [(v as number).toFixed(2), label]}
+          formatter={(v: unknown, name?: string | number) => [(v as number).toFixed(3), name ?? ""]}
           labelFormatter={(d: unknown) => `${d} m`}
         />
         <Line
           type="monotone"
           dataKey="value"
+          name={layer === "u" ? "U (m/s)" : label}
           stroke="#ef4444"
           strokeWidth={2}
           dot={{ fill: "#ef4444", r: 3 }}
         />
+        {layer === "u" && (
+          <Line
+            type="monotone"
+            dataKey="value2"
+            name="V (m/s)"
+            stroke="#60a5fa"
+            strokeWidth={2}
+            dot={{ fill: "#60a5fa", r: 3 }}
+          />
+        )}
       </LineChart>
     </ResponsiveContainer>
   );

@@ -37,7 +37,7 @@ export default function BottomPanel({
     primaryLayer === "salinity"
       ? "Salinity vs depth"
       : primaryLayer === "u"
-      ? "Velocity vs depth"
+      ? "U & V velocity vs depth"
       : "Temp vs depth";
   const timeSubtitle =
     primaryLayer === "salinity"
