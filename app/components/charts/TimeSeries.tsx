@@ -170,7 +170,7 @@ export default function TimeSeries({
           contentStyle={{ background: "#1a1f2e", border: "1px solid #2d3748", fontSize: 11 }}
           labelStyle={{ color: "#94a3b8" }}
           itemStyle={{ color: "#e2e8f0" }}
-          formatter={(v: unknown, name: string) => [
+          formatter={(v: unknown, name: string | number | undefined) => [
             (v as number).toFixed(2),
             name === "value2" ? (label2 ?? "V (m/s)") : label,
           ]}
