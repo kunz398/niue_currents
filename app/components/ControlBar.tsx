@@ -6,7 +6,7 @@ export default function ControlBar() {
       <span className="font-semibold text-sm text-white">Niue Ocean Circulation Forecast</span>
       <span className="text-[10px] bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full font-mono">
         {/* 1km · ROMS */}
-        CROC
+        CROCO
       </span>
     </header>
   );

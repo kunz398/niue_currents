@@ -31,7 +31,7 @@ export default function BottomPanel({
     primaryLayer === "salinity"
       ? "Salinity (PSU)"
       : primaryLayer === "u"
-      ? "U-velocity (m/s)"
+      ? "Velocity (m/s)"
       : "Temp (°C)";
   const depthSubtitle =
     primaryLayer === "salinity"
@@ -77,7 +77,11 @@ export default function BottomPanel({
           <p className="text-[9px] font-semibold tracking-widest text-slate-500 uppercase">
             Time Series
           </p>
-          <p className="text-xs font-medium text-slate-300">{timeSubtitle}</p>
+          <p className="text-xs font-medium text-slate-300">
+            {primaryLayer === "u" ? (
+              <><span style={{ color: "#ef4444" }}>U</span> &amp; <span style={{ color: "#60a5fa" }}>V</span> velocity · 72h</>
+            ) : timeSubtitle}
+          </p>
         </div>
         <div className="flex-1 min-h-0 overflow-hidden">
           <TimeSeries
@@ -86,6 +90,8 @@ export default function BottomPanel({
             availableTimes={availableTimes}
             layer={layer}
             label={label}
+            layer2={primaryLayer === "u" ? "v" : undefined}
+            label2={primaryLayer === "u" ? "V (m/s)" : undefined}
           />
         </div>
       </div>

@@ -15,6 +15,7 @@ import type { DepthLevel, ProbePoint } from "../OceanViewer";
 interface TSPoint {
   timeLabel: string;
   value: number;
+  value2?: number;
 }
 
 interface Props {
@@ -23,6 +24,8 @@ interface Props {
   availableTimes: string[];
   layer?: string;
   label?: string;
+  layer2?: string;
+  label2?: string;
 }
 
 function formatLabel(iso: string, firstIso: string): string {
@@ -38,6 +41,8 @@ export default function TimeSeries({
   availableTimes,
   layer = "temperature",
   label = "Temp (°C)",
+  layer2,
+  label2,
 }: Props) {
   const [data, setData] = useState<TSPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,49 +57,64 @@ export default function TimeSeries({
     const startTime = availableTimes[0];
     const endTime = availableTimes[availableTimes.length - 1];
 
-    const params = new URLSearchParams({
-      lon: String(probePoint.lon),
-      lat: String(probePoint.lat),
-      depth: String(depth),
-      startTime,
-      endTime,
-      layer,
-    });
-    fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/timeseries?${params.toString()}`, { signal: abortCtrl.signal })
-      .then((r) => r.json())
-      .then((json) => {
-        let points: TSPoint[] = [];
-        // ncWMS returns CovJSON PointSeries: domain.axes.t.values + ranges[layer].values
-        if (json?.domain?.axes?.t?.values && json?.ranges) {
-          const times: string[] = json.domain.axes.t.values;
-          const rangeKey = Object.keys(json.ranges)[0];
-          const values: (number | null)[] = json.ranges[rangeKey]?.values ?? [];
-          points = times.map((t: string, i: number) => ({
-            timeLabel: formatLabel(t, startTime),
-            value: values[i] ?? 0,
-          }));
-        } else if (json?.times && json?.values) {
-          points = (json.times as string[]).map((t: string, i: number) => ({
-            timeLabel: formatLabel(t, startTime),
-            value: (json.values as number[])[i],
-          }));
-        } else if (Array.isArray(json)) {
-          points = json.map((p: { time?: string; t?: string; value?: number }) => ({
-            timeLabel: formatLabel(p.time ?? p.t ?? startTime, startTime),
-            value: p.value ?? 0,
-          }));
-        } else if (json?.data) {
-          points = Object.entries(json.data).map(([t, v]) => ({
-            timeLabel: formatLabel(t, startTime),
-            value: v as number,
-          }));
-        }
-        setData(points);
+    function fetchLayer(lyr: string): Promise<TSPoint[]> {
+      const params = new URLSearchParams({
+        lon: String(probePoint!.lon),
+        lat: String(probePoint!.lat),
+        depth: String(depth),
+        startTime,
+        endTime,
+        layer: lyr,
+      });
+      return fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/timeseries?${params.toString()}`, { signal: abortCtrl.signal })
+        .then((r) => r.json())
+        .then((json) => {
+          let points: TSPoint[] = [];
+          if (json?.domain?.axes?.t?.values && json?.ranges) {
+            const times: string[] = json.domain.axes.t.values;
+            const rangeKey = Object.keys(json.ranges)[0];
+            const values: (number | null)[] = json.ranges[rangeKey]?.values ?? [];
+            points = times.map((t: string, i: number) => ({
+              timeLabel: formatLabel(t, startTime),
+              value: values[i] ?? 0,
+            }));
+          } else if (json?.times && json?.values) {
+            points = (json.times as string[]).map((t: string, i: number) => ({
+              timeLabel: formatLabel(t, startTime),
+              value: (json.values as number[])[i],
+            }));
+          } else if (Array.isArray(json)) {
+            points = json.map((p: { time?: string; t?: string; value?: number }) => ({
+              timeLabel: formatLabel(p.time ?? p.t ?? startTime, startTime),
+              value: p.value ?? 0,
+            }));
+          } else if (json?.data) {
+            points = Object.entries(json.data).map(([t, v]) => ({
+              timeLabel: formatLabel(t, startTime),
+              value: v as number,
+            }));
+          }
+          return points;
+        });
+    }
+
+    const fetches: [Promise<TSPoint[]>, Promise<TSPoint[]> | null] = [
+      fetchLayer(layer),
+      layer2 ? fetchLayer(layer2) : null,
+    ];
+
+    Promise.all(fetches.map((p) => p ?? Promise.resolve([])))
+      .then(([primary, secondary]) => {
+        const merged: TSPoint[] = primary.map((pt, i) => ({
+          ...pt,
+          value2: secondary[i]?.value,
+        }));
+        setData(merged);
         setLoading(false);
       })
       .catch(() => setLoading(false));
     return () => abortCtrl.abort();
-  }, [probePoint, depth, availableTimes, layer]);
+  }, [probePoint, depth, availableTimes, layer, layer2]);
 
   if (!probePoint) {
     return (
@@ -120,17 +140,17 @@ export default function TimeSeries({
     );
   }
 
-  const yMin =
-    layer === "u"
-      ? -2
-      : data.length > 0
-      ? Math.floor(Math.min(...data.map((d) => d.value)))
-      : layer === "temperature"
-      ? 22
-      : layer === "salinity"
-      ? 32
-      : "auto";
-  const yMax = layer === "u" ? 2 : "auto";
+  const isVelocity = layer === "u" || layer === "v";
+  const yMin = isVelocity
+    ? -1
+    : data.length > 0
+    ? Math.floor(Math.min(...data.map((d) => d.value)))
+    : layer === "temperature"
+    ? 22
+    : layer === "salinity"
+    ? 32
+    : "auto";
+  const yMax = isVelocity ? 1 : "auto";
 
   return (
     <ResponsiveContainer width="100%" height={155}>
@@ -150,15 +170,29 @@ export default function TimeSeries({
           contentStyle={{ background: "#1a1f2e", border: "1px solid #2d3748", fontSize: 11 }}
           labelStyle={{ color: "#94a3b8" }}
           itemStyle={{ color: "#e2e8f0" }}
-          formatter={(v: unknown) => [(v as number).toFixed(2), label]}
+          formatter={(v: unknown, name: string) => [
+            (v as number).toFixed(2),
+            name === "value2" ? (label2 ?? "V (m/s)") : label,
+          ]}
         />
         <Line
           type="monotone"
           dataKey="value"
-          stroke="#3b82f6"
+          name="value"
+          stroke="#ef4444"
           strokeWidth={2}
           dot={false}
         />
+        {layer2 && (
+          <Line
+            type="monotone"
+            dataKey="value2"
+            name="value2"
+            stroke="#60a5fa"
+            strokeWidth={2}
+            dot={false}
+          />
+        )}
       </LineChart>
     </ResponsiveContainer>
   );
