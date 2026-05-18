@@ -12,13 +12,21 @@ export async function GET(req: NextRequest) {
   const endTime = params.get("endTime") ?? "";
   const layer = params.get("layer") ?? "temperature";
 
+  const VALID_INFO_FORMATS: Record<string, string> = {
+    "application/prs.coverage+json": "application/prs.coverage%2Bjson",
+    "text/csv": "text/csv",
+    "image/png": "image/png",
+  };
+  const requestedFormat = params.get("infoFormat") ?? "application/prs.coverage+json";
+  const infoFormat = VALID_INFO_FORMATS[requestedFormat] ?? "application/prs.coverage%2Bjson";
+
   const upstream =
     `${WMS_BASE}?SERVICE=WMS&REQUEST=GetTimeseries` +
     `&LAYERS=${encodeURIComponent(layer)}` +
     `&CRS=CRS:84` +
     `&BBOX=${lon},${lat},${lon},${lat}` +
     `&WIDTH=1&HEIGHT=1` +
-    `&INFO_FORMAT=text/json` +
+    `&INFO_FORMAT=${infoFormat}` +
     `&QUERY_LAYERS=${encodeURIComponent(layer)}` +
     `&I=0&J=0` +
     `&FORMAT=image/png` +
