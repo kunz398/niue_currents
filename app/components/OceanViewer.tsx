@@ -54,24 +54,28 @@ const INITIAL_STATE: AppState = {
 
 export default function OceanViewer() {
   const [state, setState] = useState<AppState>(INITIAL_STATE);
+  const activeLayer: keyof LayerState = state.layers.velocity
+    ? "velocity"
+    : state.layers.salinity
+    ? "salinity"
+    : "temperature";
+  const metadataLayerName = activeLayer === "velocity" ? "u" : activeLayer;
 
-  // Fetch available time steps on mount
+  // Fetch available time steps for the currently selected layer
   useEffect(() => {
     const abortCtrl = new AbortController();
     fetch(
-      `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/metadata?item=layerDetails&layerName=temperature`,
+      `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/metadata?item=layerDetails&layerName=${metadataLayerName}`,
       { signal: abortCtrl.signal }
     )
       .then((r) => r.json())
       .then((data: { nearestTimeIso?: string; datesWithData?: Record<string, Record<string, number[]>> }) => {
-        // Build time strings from datesWithData
+        // Build day anchors from datesWithData, then expand to intraday timesteps.
         const times: string[] = [];
         if (data.datesWithData) {
-          for (const year of Object.keys(data.datesWithData)) {
-            for (const month of Object.keys(data.datesWithData[year])) {
+          for (const year of Object.keys(data.datesWithData).sort()) {
+            for (const month of Object.keys(data.datesWithData[year]).sort((a, b) => Number(a) - Number(b))) {
               for (const day of data.datesWithData[year][month]) {
-                // Hourly: we'll use timesteps API for a specific day
-                // For now seed with the nearest time; we'll fetch a day's timesteps separately
                 const paddedMonth = String(parseInt(month) + 1).padStart(2, "0");
                 const paddedDay = String(day).padStart(2, "0");
                 times.push(`${year}-${paddedMonth}-${paddedDay}T00:00:00.000Z`);
@@ -82,13 +86,12 @@ export default function OceanViewer() {
         if (data.nearestTimeIso && times.length === 0) {
           times.push(data.nearestTimeIso);
         }
-        setState((s) => ({ ...s, availableTimes: times }));
 
-        // Fetch hourly timesteps for all days
+        // Fetch intraday timesteps for all available days.
         return Promise.all(
           times.map((t) =>
             fetch(
-              `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/metadata?item=timesteps&layerName=temperature&day=${t.slice(0, 10)}`,
+              `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/metadata?item=timesteps&layerName=${metadataLayerName}&day=${t.slice(0, 10)}`,
               { signal: abortCtrl.signal }
             )
               .then((r) => r.json())
@@ -101,21 +104,28 @@ export default function OceanViewer() {
       })
       .then((hourlyArrays: string[][]) => {
         const all = hourlyArrays.flat().sort();
-        if (all.length > 0) {
-          setState((s) => ({
+        setState((s) => {
+          if (all.length === 0) {
+            return { ...s, availableTimes: [], timeIndex: 0 };
+          }
+
+          const previousTime = s.availableTimes[s.timeIndex];
+          const preservedIndex = previousTime ? all.indexOf(previousTime) : -1;
+          const nextIndex = preservedIndex >= 0 ? preservedIndex : Math.max(0, all.length - 1);
+
+          return {
             ...s,
             availableTimes: all,
-            // Start near the most recent time
-            timeIndex: Math.max(0, all.length - 1),
-          }));
-        }
+            timeIndex: nextIndex,
+          };
+        });
       })
       .catch(() => {
         // Silently handle abort or network error
       });
 
     return () => abortCtrl.abort();
-  }, []);
+  }, [metadataLayerName]);
 
   const setLayerToggle = useCallback(
     (key: keyof LayerState, value: boolean) =>

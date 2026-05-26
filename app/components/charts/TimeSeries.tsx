@@ -67,30 +67,42 @@ export default function TimeSeries({
         layer: lyr,
       });
       return fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/timeseries?${params.toString()}`, { signal: abortCtrl.signal })
-        .then((r) => r.json())
+        .then(async (r) => {
+          if (!r.ok) {
+            const message = await r.text().catch(() => "");
+            throw new Error(message || `Timeseries request failed (${r.status})`);
+          }
+          return r.json();
+        })
         .then((json) => {
           let points: TSPoint[] = [];
           if (json?.domain?.axes?.t?.values && json?.ranges) {
             const times: string[] = json.domain.axes.t.values;
             const rangeKey = Object.keys(json.ranges)[0];
             const values: (number | null)[] = json.ranges[rangeKey]?.values ?? [];
+            const firstReturnedTime = times[0] ?? startTime;
             points = times.map((t: string, i: number) => ({
-              timeLabel: formatLabel(t, startTime),
+              timeLabel: formatLabel(t, firstReturnedTime),
               value: values[i] ?? 0,
             }));
           } else if (json?.times && json?.values) {
-            points = (json.times as string[]).map((t: string, i: number) => ({
-              timeLabel: formatLabel(t, startTime),
+            const times = json.times as string[];
+            const firstReturnedTime = times[0] ?? startTime;
+            points = times.map((t: string, i: number) => ({
+              timeLabel: formatLabel(t, firstReturnedTime),
               value: (json.values as number[])[i],
             }));
           } else if (Array.isArray(json)) {
+            const firstReturnedTime = json[0]?.time ?? json[0]?.t ?? startTime;
             points = json.map((p: { time?: string; t?: string; value?: number }) => ({
-              timeLabel: formatLabel(p.time ?? p.t ?? startTime, startTime),
+              timeLabel: formatLabel(p.time ?? p.t ?? firstReturnedTime, firstReturnedTime),
               value: p.value ?? 0,
             }));
           } else if (json?.data) {
-            points = Object.entries(json.data).map(([t, v]) => ({
-              timeLabel: formatLabel(t, startTime),
+            const entries = Object.entries(json.data);
+            const firstReturnedTime = entries[0]?.[0] ?? startTime;
+            points = entries.map(([t, v]) => ({
+              timeLabel: formatLabel(t, firstReturnedTime),
               value: v as number,
             }));
           }
@@ -112,7 +124,10 @@ export default function TimeSeries({
         setData(merged);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setData([]);
+        setLoading(false);
+      });
     return () => abortCtrl.abort();
   }, [probePoint, depth, availableTimes, layer, layer2]);
 

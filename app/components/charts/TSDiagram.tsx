@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
   Cell,
+  ReferenceDot,
 } from "recharts";
 import type { ProbePoint } from "../OceanViewer";
 
@@ -18,6 +19,25 @@ interface TSDataPoint {
   temperature: number | null;
   salinity: number | null;
 }
+
+interface WaterMassPoint {
+  key: string;
+  x: number;
+  y: number;
+  label: string;
+  labelPosition: "top" | "bottom" | "left" | "right";
+  labelOffset?: number;
+}
+
+// Known water masses expected around Niue and their T-S signatures.
+const WATER_MASSES: WaterMassPoint[] = [
+  { key: "SPTW", x: 35.6, y: 24, label: "SPTW", labelPosition: "top", labelOffset: 12 },
+  { key: "SPEW", x: 35.2, y: 21, label: "SPEW", labelPosition: "top", labelOffset: 10 },
+  { key: "AAIW", x: 34.4, y: 5, label: "AAIW", labelPosition: "right", labelOffset: 10 },
+  { key: "SAMW", x: 34.5, y: 8, label: "SAMW", labelPosition: "top", labelOffset: 10 },
+  { key: "PDW", x: 34.6, y: 2, label: "PDW", labelPosition: "left", labelOffset: 10 },
+  { key: "LCDW", x: 34.7, y: 1.5, label: "LCDW", labelPosition: "right", labelOffset: 10 },
+];
 
 // Map depth to a colour in the same style as the depth picker
 const DEPTH_COLOUR_MAP: Record<string, string> = {
@@ -48,7 +68,6 @@ export default function TSDiagram({ probePoint, currentTime }: Props) {
 
   useEffect(() => {
     if (!probePoint || !currentTime) {
-      setData([]);
       return;
     }
     // Debounce: wait 600ms after last change before firing
@@ -115,7 +134,7 @@ export default function TSDiagram({ probePoint, currentTime }: Props) {
           name="Salinity"
           tick={{ fill: "#94a3b8", fontSize: 10 }}
           label={{ value: "Salinity (PSU)", position: "insideBottomRight", fill: "#94a3b8", fontSize: 10, dy: 12 }}
-          domain={["auto", "auto"]}
+          domain={[34, 37]}
         />
         <YAxis
           type="number"
@@ -123,7 +142,7 @@ export default function TSDiagram({ probePoint, currentTime }: Props) {
           name="Temperature"
           tick={{ fill: "#94a3b8", fontSize: 10 }}
           label={{ value: "Temp (°C)", angle: -90, position: "insideLeft", fill: "#94a3b8", fontSize: 10, dx: -10 }}
-          domain={["auto", "auto"]}
+          domain={[0, 32]}
         />
         <Tooltip
           contentStyle={{ background: "#1a1f2e", border: "1px solid #2d3748", fontSize: 11 }}
@@ -145,6 +164,26 @@ export default function TSDiagram({ probePoint, currentTime }: Props) {
             <Cell key={`cell-${index}`} fill={depthColour(entry.depth)} />
           ))}
         </Scatter>
+        {WATER_MASSES.map((wm) => (
+          <ReferenceDot
+            key={wm.key}
+            x={wm.x}
+            y={wm.y}
+            r={4}
+            fill="#0b1220"
+            stroke="#e2e8f0"
+            strokeWidth={1.2}
+            ifOverflow="visible"
+            label={{
+              value: wm.label,
+              position: wm.labelPosition,
+              offset: wm.labelOffset ?? 8,
+              fill: "#cbd5e1",
+              fontSize: 10,
+              fontWeight: 600,
+            }}
+          />
+        ))}
       </ScatterChart>
     </ResponsiveContainer>
   );
