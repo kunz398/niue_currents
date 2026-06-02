@@ -48,6 +48,22 @@ async function fetchProfile(
   return [];
 }
 
+async function fetchProfileWithFallback(
+  layer: string,
+  lon: string,
+  lat: string,
+  time: string
+): Promise<Array<{ depth: number; value: number }>> {
+  const withRequestedTime = await fetchProfile(layer, lon, lat, time);
+  if (withRequestedTime.length > 0 || !time) {
+    return withRequestedTime;
+  }
+
+  // Fallback: some layers have different timestep catalogs. If the requested
+  // TIME is missing for temp/salinity, ask ncWMS for nearest/default profile.
+  return fetchProfile(layer, lon, lat, "");
+}
+
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
   const lon = params.get("lon") ?? "";
@@ -55,8 +71,8 @@ export async function GET(req: NextRequest) {
   const time = params.get("time") ?? "";
 
   const [tempData, saltData] = await Promise.all([
-    fetchProfile("temperature", lon, lat, time),
-    fetchProfile("salinity", lon, lat, time),
+    fetchProfileWithFallback("temperature", lon, lat, time),
+    fetchProfileWithFallback("salinity", lon, lat, time),
   ]);
 
   // Merge by depth

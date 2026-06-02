@@ -54,7 +54,12 @@ export default function DepthProfile({
           `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/profile?${params.toString()}`,
           { signal: abortCtrl.signal }
         )
-          .then((r) => r.json())
+          .then(async (r) => {
+            if (!r.ok) return [];
+            const contentType = r.headers.get("content-type") ?? "";
+            if (!contentType.includes("application/json")) return [];
+            return r.json();
+          })
           .then((json) => {
             let points: ProfilePoint[] = [];
             if (Array.isArray(json)) {
@@ -77,10 +82,17 @@ export default function DepthProfile({
       }
 
       const fetchU = fetchLayer(layer);
-      const fetchV = layer === "u" ? fetchLayer("v") : Promise.resolve(null);
+      const fetchV: Promise<ProfilePoint[] | null> =
+        layer === "u" ? fetchLayer("v") : Promise.resolve(null);
 
-      Promise.all([fetchU, fetchV])
-        .then(([uPts, vPts]) => {
+      Promise.allSettled([fetchU, fetchV])
+        .then(([uResult, vResult]) => {
+          const uPts = uResult.status === "fulfilled" ? uResult.value : [];
+          const vPts =
+            vResult.status === "fulfilled"
+              ? vResult.value
+              : null;
+
           if (vPts) {
             // Merge v values onto u points by matching depth
             const vMap = new Map(vPts.map((p) => [p.depth, p.value]));

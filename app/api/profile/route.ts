@@ -3,15 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 const WMS_BASE =
   "https://gemthreddshpc.spc.int/thredds/wms/POP/model/country/spc/forecast/hourly/NIU_Currents/d1_temp_salt_uv_z_all.nc";
 
-export async function GET(req: NextRequest) {
-  const params = req.nextUrl.searchParams;
-  const lon = params.get("lon") ?? "";
-  const lat = params.get("lat") ?? "";
-  const time = params.get("time") ?? "";
-  const layer = params.get("layer") ?? "temperature";
-
-  // WMS GetVerticalProfile returns JSON with depth/value pairs
-  const upstream =
+function buildProfileUrl(layer: string, lon: string, lat: string, time: string): string {
+  return (
     `${WMS_BASE}?SERVICE=WMS&REQUEST=GetVerticalProfile` +
     `&LAYERS=${encodeURIComponent(layer)}` +
     `&CRS=CRS:84` +
@@ -22,12 +15,28 @@ export async function GET(req: NextRequest) {
     `&I=0&J=0` +
     `&FORMAT=image/png` +
     (time ? `&TIME=${encodeURIComponent(time)}` : "") +
-    `&VERSION=1.3.0`;
+    `&VERSION=1.3.0`
+  );
+}
 
-  const res = await fetch(upstream, { next: { revalidate: 3600 } });
+export async function GET(req: NextRequest) {
+  const params = req.nextUrl.searchParams;
+  const lon = params.get("lon") ?? "";
+  const lat = params.get("lat") ?? "";
+  const time = params.get("time") ?? "";
+  const layer = params.get("layer") ?? "temperature";
+
+  let res = await fetch(buildProfileUrl(layer, lon, lat, time), { next: { revalidate: 3600 } });
+  if (!res.ok && time) {
+    // Some variables can have slightly different time catalogs.
+    // Retry without TIME so charts still show nearest/default profile.
+    res = await fetch(buildProfileUrl(layer, lon, lat, ""), { next: { revalidate: 3600 } });
+  }
 
   if (!res.ok) {
-    return new NextResponse(`Profile error: ${res.status}`, { status: res.status });
+    return NextResponse.json([], {
+      headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" },
+    });
   }
 
   const json = await res.json();
