@@ -25,6 +25,7 @@ export interface LayerState {
   temperature: boolean;
   salinity: boolean;
   velocity: boolean;
+  seaSurfaceHeight: boolean;
 }
 
 export interface ProbePoint {
@@ -45,6 +46,7 @@ const INITIAL_STATE: AppState = {
     temperature: false,
     salinity: false,
     velocity: true,
+    seaSurfaceHeight: false,
   },
   depth: -5,
   timeIndex: 0,
@@ -54,12 +56,19 @@ const INITIAL_STATE: AppState = {
 
 export default function OceanViewer() {
   const [state, setState] = useState<AppState>(INITIAL_STATE);
-  const activeLayer: keyof LayerState = state.layers.velocity
+  const activeLayer: keyof LayerState = state.layers.seaSurfaceHeight
+    ? "seaSurfaceHeight"
+    : state.layers.velocity
     ? "velocity"
     : state.layers.salinity
     ? "salinity"
     : "temperature";
-  const metadataLayerName = activeLayer === "velocity" ? "u" : activeLayer;
+  const metadataLayerName =
+    activeLayer === "velocity"
+      ? "u"
+      : activeLayer === "seaSurfaceHeight"
+      ? "zeta"
+      : activeLayer;
 
   // Fetch available time steps for the currently selected layer
   useEffect(() => {
@@ -120,8 +129,9 @@ export default function OceanViewer() {
           };
         });
       })
-      .catch(() => {
-        // Silently handle abort or network error
+      .catch((err) => {
+        if (abortCtrl.signal.aborted) return;
+        console.error("metadata fetch failed", err);
       });
 
     return () => abortCtrl.abort();
@@ -132,7 +142,13 @@ export default function OceanViewer() {
       setState((s) => ({
         ...s,
         layers: value
-          ? { temperature: false, salinity: false, velocity: false, [key]: true }
+          ? {
+              temperature: false,
+              salinity: false,
+              velocity: false,
+              seaSurfaceHeight: false,
+              [key]: true,
+            }
           : { ...s.layers, [key]: false },
       })),
     []
@@ -189,13 +205,15 @@ export default function OceanViewer() {
           </div>
 
           {/* Bottom chart panel */}
-          <BottomPanel
-            layers={state.layers}
-            probePoint={state.probePoint}
-            depth={state.depth}
-            currentTime={currentTime}
-            availableTimes={state.availableTimes}
-          />
+          {!state.layers.seaSurfaceHeight && (
+            <BottomPanel
+              layers={state.layers}
+              probePoint={state.probePoint}
+              depth={state.depth}
+              currentTime={currentTime}
+              availableTimes={state.availableTimes}
+            />
+          )}
         </div>
       </div>
     </div>

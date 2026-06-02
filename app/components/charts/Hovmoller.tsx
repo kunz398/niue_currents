@@ -30,14 +30,14 @@ export default function Hovmoller({ probePoint, availableTimes }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hovData, setHovData] = useState<HovData | null>(null);
   const [loading, setLoading] = useState(false);
+  const hasRequestContext = Boolean(probePoint) && availableTimes.length > 0;
 
   useEffect(() => {
     if (!probePoint || availableTimes.length === 0) {
-      setHovData(null);
       return;
     }
-    setLoading(true);
     const abortCtrl = new AbortController();
+    queueMicrotask(() => setLoading(true));
 
     // Fetch time series at each depth in parallel
     const fetchDepth = (depth: number) => {
@@ -142,7 +142,7 @@ export default function Hovmoller({ probePoint, availableTimes }: Props) {
     );
   }
 
-  if (!hovData) {
+  if (!hasRequestContext || !hovData) {
     return (
       <div className="flex items-center justify-center h-full text-slate-500 text-xs">
         No data

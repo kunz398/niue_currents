@@ -36,7 +36,6 @@ export default function DepthProfile({
 
   useEffect(() => {
     if (!probePoint || !currentTime) {
-      setData([]);
       return;
     }
     // Debounce: wait 600ms after last change before firing (avoids firing on every animation step)
@@ -108,6 +107,14 @@ export default function DepthProfile({
     return (
       <div className="flex items-center justify-center h-full text-slate-500 text-xs">
         Loading…
+      </div>
+    );
+  }
+
+  if (!currentTime) {
+    return (
+      <div className="flex items-center justify-center h-full text-slate-500 text-xs">
+        No profile data
       </div>
     );
   }

@@ -20,6 +20,19 @@ export default function BottomPanel({
   currentTime,
   availableTimes,
 }: Props) {
+  if (layers.seaSurfaceHeight) {
+    return (
+      <div className="h-56 shrink-0 bg-[#0f1117] border-t border-[#2d3748] flex items-center justify-center px-6 text-center">
+        <div>
+          <p className="text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+            Sea Surface Height
+          </p>
+          <p className="mt-2 text-sm text-slate-300">Depth-based charts are disabled for the zeta overlay.</p>
+        </div>
+      </div>
+    );
+  }
+
   // Pick primary variable for profile/timeseries
   const primaryLayer = layers.velocity
     ? "u"

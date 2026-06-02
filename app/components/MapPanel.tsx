@@ -18,23 +18,26 @@ const INITIAL_VIEW: MapViewState = {
 };
 
 // Per-layer WMS config
-const RASTER_LAYERS = ["temperature", "salinity", "velocity"] as const;
+const RASTER_LAYERS = ["temperature", "salinity", "velocity", "seaSurfaceHeight"] as const;
 type RasterKey = typeof RASTER_LAYERS[number];
 
 const LAYER_WMS: Record<RasterKey, string> = {
   temperature: "temperature",
   salinity: "salinity",
   velocity: "u:v-group",
+  seaSurfaceHeight: "zeta",
 };
 const LAYER_STYLE: Record<RasterKey, string> = {
   temperature: "raster/div-RdBu-inv",
   salinity: "raster/div-BuRd",
   velocity: "default-vector",
+  seaSurfaceHeight: "default-scalar/default",
 };
 const LAYER_COLORSCALE: Record<RasterKey, string> = {
   temperature: "24,30",
   salinity: "34,36",
   velocity: "0.0001,0.4237",
+  seaSurfaceHeight: "0.0001,0.7862",
 };
 
 interface LegendConfig {
@@ -57,6 +60,11 @@ const LAYER_LEGEND: Record<RasterKey, LegendConfig> = {
     label: "Velocity (m/s)",
     gradient: "linear-gradient(to right,#440154,#2a788e,#22a884,#7ad151,#fde725)",
     ticks: ["0.0001", "0.21", "0.4237"],
+  },
+  seaSurfaceHeight: {
+    label: "Sea Surface Height (m)",
+    gradient: "linear-gradient(to right,#0736c4,#0e78d4,#1ab0d3,#44c487,#8dd33f,#d6dd1e,#f2bf00,#f58a00,#f44300,#d90000)",
+    ticks: ["0.0001", "0.262", "0.524", "0.7862"],
   },
 };
 
@@ -89,13 +97,13 @@ function buildWmsTileUrl(
     HEIGHT: "256",
     FORMAT: "image/png",
     TRANSPARENT: "true",
-    ELEVATION: String(depth),
     NUMCOLORBANDS: "250",
     COLORSCALERANGE: LAYER_COLORSCALE[key],
     ABOVEMAXCOLOR: "extend",
     BELOWMINCOLOR: "transparent",
-    BGCOLOR: "extend",
+    BGCOLOR: "transparent",
     LOGSCALE: "false",
+    ...(key === "seaSurfaceHeight" ? {} : { ELEVATION: String(depth) }),
     ...(time ? { TIME: time } : {}),
   });
   return `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/wms?${decodeURIComponent(params.toString())}`;
@@ -202,7 +210,7 @@ export default function MapPanel({
           })
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [layers.temperature, layers.salinity, layers.velocity, depth, currentTime, rasterOpacity]
+    [layers.temperature, layers.salinity, layers.velocity, layers.seaSurfaceHeight, depth, currentTime, rasterOpacity]
   );
 
   const markerLayer = useMemo(

@@ -53,7 +53,11 @@ function drawWave(ctx: CanvasRenderingContext2D, W: number, H: number, frac: num
   for (let i = 0; i <= 120; i++) {
     const x = (i / 120) * W;
     const y = H / 2 - WAVE_POINTS[i] * H * 0.38;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
   }
   ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
   ctx.fillStyle = "rgba(30,80,130,0.25)";
@@ -65,7 +69,11 @@ function drawWave(ctx: CanvasRenderingContext2D, W: number, H: number, frac: num
     const x = (i / 120) * W;
     if (x > pastX) break;
     const y = H / 2 - WAVE_POINTS[i] * H * 0.38;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
   }
   ctx.lineTo(pastX, H); ctx.lineTo(0, H); ctx.closePath();
   ctx.fillStyle = "rgba(125,211,252,0.12)";
@@ -76,7 +84,11 @@ function drawWave(ctx: CanvasRenderingContext2D, W: number, H: number, frac: num
   for (let i = 0; i <= 120; i++) {
     const x = (i / 120) * W;
     const y = H / 2 - WAVE_POINTS[i] * H * 0.38;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
   }
   ctx.strokeStyle = "rgba(125,211,252,0.35)";
   ctx.lineWidth = 1;
@@ -88,7 +100,11 @@ function drawWave(ctx: CanvasRenderingContext2D, W: number, H: number, frac: num
     const x = (i / 120) * W;
     if (x > pastX + 1) break;
     const y = H / 2 - WAVE_POINTS[i] * H * 0.38;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
   }
   ctx.strokeStyle = "#7dd3fc";
   ctx.lineWidth = 1.5;
@@ -127,6 +143,7 @@ interface Props {
   timeIndex: number;
   availableTimes: string[];
   depth: DepthLevel;
+  disableDepth?: boolean;
   onTimeIndexChange: (i: number) => void;
   onDepthChange: (d: DepthLevel) => void;
 }
@@ -134,7 +151,7 @@ interface Props {
 const CANVAS_H = 64;
 const SPEEDS = [0.5, 1, 2, 4];
 
-export default function TimeStep({ timeIndex, availableTimes, depth, onTimeIndexChange, onDepthChange }: Props) {
+export default function TimeStep({ timeIndex, availableTimes, depth, disableDepth = false, onTimeIndexChange, onDepthChange }: Props) {
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
 
@@ -151,6 +168,7 @@ export default function TimeStep({ timeIndex, availableTimes, depth, onTimeIndex
   const depthRef = useRef(depth);
   const playingRef = useRef(false);
   const speedRef = useRef(1);
+  const disableDepthRef = useRef(disableDepth);
   const onTimeRef = useRef(onTimeIndexChange);
   const onDepthRef = useRef(onDepthChange);
 
@@ -159,6 +177,7 @@ export default function TimeStep({ timeIndex, availableTimes, depth, onTimeIndex
   useEffect(() => { depthRef.current = depth; }, [depth]);
   useEffect(() => { playingRef.current = playing; }, [playing]);
   useEffect(() => { speedRef.current = speed; }, [speed]);
+  useEffect(() => { disableDepthRef.current = disableDepth; }, [disableDepth]);
   useEffect(() => { onTimeRef.current = onTimeIndexChange; }, [onTimeIndexChange]);
   useEffect(() => { onDepthRef.current = onDepthChange; }, [onDepthChange]);
 
@@ -219,9 +238,11 @@ export default function TimeStep({ timeIndex, availableTimes, depth, onTimeIndex
         const cur = timeIdxRef.current;
         const tot = totalRef.current;
         if (cur >= tot - 1) {
-          const di = DEPTH_LEVELS.indexOf(depthRef.current);
-          const next = (di + 1) % DEPTH_LEVELS.length;
-          onDepthRef.current(DEPTH_LEVELS[next]);
+          if (!disableDepthRef.current) {
+            const di = DEPTH_LEVELS.indexOf(depthRef.current);
+            const next = (di + 1) % DEPTH_LEVELS.length;
+            onDepthRef.current(DEPTH_LEVELS[next]);
+          }
           onTimeRef.current(0);
         } else {
           onTimeRef.current(cur + 1);
@@ -284,7 +305,9 @@ export default function TimeStep({ timeIndex, availableTimes, depth, onTimeIndex
           <span style={{ fontSize: 10, fontWeight: 500, color: "#7dd3fc", background: "rgba(125,211,252,0.12)", borderRadius: 20, padding: "1px 6px" }}>
             T+{timeIndex}
           </span>
-          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.28)" }}>-{Math.abs(depth)}m</span>
+          {!disableDepth && (
+            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.28)" }}>-{Math.abs(depth)}m</span>
+          )}
         </div>
       </div>
 
@@ -331,29 +354,30 @@ export default function TimeStep({ timeIndex, availableTimes, depth, onTimeIndex
         </div>
       </div>
 
-      {/* Depth cycle indicator */}
-      <div style={{ padding: "0 12px 7px" }}>
-        <div style={{ fontSize: 8, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)", marginBottom: 3 }}>
-          depth level
+      {!disableDepth && (
+        <div style={{ padding: "0 12px 7px" }}>
+          <div style={{ fontSize: 8, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)", marginBottom: 3 }}>
+            depth level
+          </div>
+          <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+            {DEPTH_LEVELS.map((d, i) => (
+              <div
+                key={d}
+                title={`${Math.abs(d)}m`}
+                style={{
+                  flex: 1, height: i === depthIdx ? 5 : 3, borderRadius: 2,
+                  background: i < depthIdx
+                    ? "#7dd3fc"
+                    : i === depthIdx
+                      ? "rgba(125,211,252,0.7)"
+                      : "rgba(255,255,255,0.08)",
+                  transition: "all 0.3s",
+                }}
+              />
+            ))}
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-          {DEPTH_LEVELS.map((d, i) => (
-            <div
-              key={d}
-              title={`${Math.abs(d)}m`}
-              style={{
-                flex: 1, height: i === depthIdx ? 5 : 3, borderRadius: 2,
-                background: i < depthIdx
-                  ? "#7dd3fc"
-                  : i === depthIdx
-                    ? "rgba(125,211,252,0.7)"
-                    : "rgba(255,255,255,0.08)",
-                transition: "all 0.3s",
-              }}
-            />
-          ))}
-        </div>
-      </div>
+      )}
 
       {/* Playback controls */}
       <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px 8px", borderTop: "0.5px solid rgba(255,255,255,0.06)" }}>

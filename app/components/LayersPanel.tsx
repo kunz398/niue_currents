@@ -8,6 +8,7 @@ const LAYER_CONFIG: { key: keyof LayerState; label: string; color: string; unit:
   { key: "temperature", label: "Temperature", color: "#f59e0b", unit: "°C" },
   { key: "salinity",    label: "Salinity",    color: "#60a5fa", unit: "PSU" },
   { key: "velocity",    label: "Velocity",    color: "#34d399", unit: "m/s" },
+  { key: "seaSurfaceHeight", label: "Sea Surface Height", color: "#22d3ee", unit: "m" },
 ];
 
 interface Props {
@@ -82,12 +83,14 @@ export default function LayersPanel({
       </section>
 
       {/* DEPTH */}
-      <section>
-        <h3 className="text-[10px] font-semibold tracking-widest text-slate-500 uppercase mb-3">
-          {/* Select Depth */}
-        </h3>
-        <Depth depth={depth} onDepthChange={onDepthChange} />
-      </section>
+      {!layers.seaSurfaceHeight && (
+        <section>
+          <h3 className="text-[10px] font-semibold tracking-widest text-slate-500 uppercase mb-3">
+            {/* Select Depth */}
+          </h3>
+          <Depth depth={depth} onDepthChange={onDepthChange} />
+        </section>
+      )}
 
       {/* TIME STEP */}
       <section>
@@ -95,6 +98,7 @@ export default function LayersPanel({
           timeIndex={timeIndex}
           availableTimes={availableTimes}
           depth={depth}
+          disableDepth={layers.seaSurfaceHeight}
           onTimeIndexChange={onTimeIndexChange}
           onDepthChange={onDepthChange}
         />

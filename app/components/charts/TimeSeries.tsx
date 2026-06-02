@@ -46,14 +46,14 @@ export default function TimeSeries({
 }: Props) {
   const [data, setData] = useState<TSPoint[]>([]);
   const [loading, setLoading] = useState(false);
+  const hasRequestContext = Boolean(probePoint) && availableTimes.length > 0;
 
   useEffect(() => {
     if (!probePoint || availableTimes.length === 0) {
-      setData([]);
       return;
     }
-    setLoading(true);
     const abortCtrl = new AbortController();
+    queueMicrotask(() => setLoading(true));
     const startTime = availableTimes[0];
     const endTime = availableTimes[availableTimes.length - 1];
 
@@ -147,7 +147,7 @@ export default function TimeSeries({
     );
   }
 
-  if (data.length === 0) {
+  if (!hasRequestContext || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-slate-500 text-xs">
         No time series data
