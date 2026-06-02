@@ -11,7 +11,7 @@ const DOMAIN = {
   west: -172.1634979248047,
 };
 
-// Sample grid spacing in degrees (~1° = ~111km, gives ~7×7=49 arrow points)
+
 const STEP = 1.0;
 
 interface ArrowPoint {
