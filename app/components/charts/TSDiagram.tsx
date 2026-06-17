@@ -13,6 +13,9 @@ import {
   ReferenceDot,
 } from "recharts";
 import type { ProbePoint } from "../OceanViewer";
+import { loadDepthLevels, loadTimeSteps, loadProfileAtPoint, findNearestIndex } from "../../lib/zarrLoader";
+
+const DATASET_NAME = "d1_temp_salt_uv_z_all.zarr";
 
 interface TSDataPoint {
   depth: number;
@@ -71,23 +74,34 @@ export default function TSDiagram({ probePoint, currentTime }: Props) {
       return;
     }
     // Debounce: wait 600ms after last change before firing
-    const abortCtrl = new AbortController();
+    let cancelled = false;
     const timer = setTimeout(() => {
       setLoading(true);
-      const params = new URLSearchParams({
-        lon: String(probePoint.lon),
-        lat: String(probePoint.lat),
-        time: currentTime,
-      });
-      fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/tsdata?${params.toString()}`, { signal: abortCtrl.signal })
-        .then((r) => r.json())
-        .then((json: TSDataPoint[]) => {
-          setData(Array.isArray(json) ? json : []);
+
+      Promise.all([loadDepthLevels(DATASET_NAME), loadTimeSteps(DATASET_NAME)])
+        .then(async ([depths, times]) => {
+          const timeIndex = findNearestIndex(
+            times.map((t) => new Date(t).getTime()),
+            new Date(currentTime).getTime()
+          );
+          const [temperature, salinity] = await Promise.all([
+            loadProfileAtPoint(DATASET_NAME, "temperature", { timeIndex, lon: probePoint.lon, lat: probePoint.lat }),
+            loadProfileAtPoint(DATASET_NAME, "salinity", { timeIndex, lon: probePoint.lon, lat: probePoint.lat }),
+          ]);
+          return depths.map((d, i) => ({
+            depth: d,
+            temperature: temperature[i] ?? null,
+            salinity: salinity[i] ?? null,
+          }));
+        })
+        .then((points) => {
+          if (cancelled) return;
+          setData(points);
           setLoading(false);
         })
-        .catch(() => setLoading(false));
+        .catch(() => { if (!cancelled) setLoading(false); });
     }, 600);
-    return () => { clearTimeout(timer); abortCtrl.abort(); };
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [probePoint, currentTime]);
 
   if (!probePoint) {

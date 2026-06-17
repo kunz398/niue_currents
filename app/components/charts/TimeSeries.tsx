@@ -11,6 +11,9 @@ import {
   CartesianGrid,
 } from "recharts";
 import type { DepthLevel, ProbePoint } from "../OceanViewer";
+import { loadDepthLevels, loadTimeSteps, loadTimeSeriesAtPoint, findNearestIndex } from "../../lib/zarrLoader";
+
+const DATASET_NAME = "d1_temp_salt_uv_z_all.zarr";
 
 interface TSPoint {
   timeLabel: string;
@@ -52,83 +55,43 @@ export default function TimeSeries({
     if (!probePoint || availableTimes.length === 0) {
       return;
     }
-    const abortCtrl = new AbortController();
+    let cancelled = false;
     queueMicrotask(() => setLoading(true));
-    const startTime = availableTimes[0];
-    const endTime = availableTimes[availableTimes.length - 1];
 
-    function fetchLayer(lyr: string): Promise<TSPoint[]> {
-      const params = new URLSearchParams({
-        lon: String(probePoint!.lon),
-        lat: String(probePoint!.lat),
-        depth: String(depth),
-        startTime,
-        endTime,
-        layer: lyr,
+    async function fetchLayer(variable: string): Promise<TSPoint[]> {
+      const [depths, times] = await Promise.all([
+        loadDepthLevels(DATASET_NAME),
+        loadTimeSteps(DATASET_NAME),
+      ]);
+      const depthIndex = findNearestIndex(depths, depth);
+      const values = await loadTimeSeriesAtPoint(DATASET_NAME, variable, {
+        depthIndex,
+        lon: probePoint!.lon,
+        lat: probePoint!.lat,
       });
-      return fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/timeseries?${params.toString()}`, { signal: abortCtrl.signal })
-        .then(async (r) => {
-          if (!r.ok) {
-            const message = await r.text().catch(() => "");
-            throw new Error(message || `Timeseries request failed (${r.status})`);
-          }
-          return r.json();
-        })
-        .then((json) => {
-          let points: TSPoint[] = [];
-          if (json?.domain?.axes?.t?.values && json?.ranges) {
-            const times: string[] = json.domain.axes.t.values;
-            const rangeKey = Object.keys(json.ranges)[0];
-            const values: (number | null)[] = json.ranges[rangeKey]?.values ?? [];
-            const firstReturnedTime = times[0] ?? startTime;
-            points = times.map((t: string, i: number) => ({
-              timeLabel: formatLabel(t, firstReturnedTime),
-              value: values[i] ?? 0,
-            }));
-          } else if (json?.times && json?.values) {
-            const times = json.times as string[];
-            const firstReturnedTime = times[0] ?? startTime;
-            points = times.map((t: string, i: number) => ({
-              timeLabel: formatLabel(t, firstReturnedTime),
-              value: (json.values as number[])[i],
-            }));
-          } else if (Array.isArray(json)) {
-            const firstReturnedTime = json[0]?.time ?? json[0]?.t ?? startTime;
-            points = json.map((p: { time?: string; t?: string; value?: number }) => ({
-              timeLabel: formatLabel(p.time ?? p.t ?? firstReturnedTime, firstReturnedTime),
-              value: p.value ?? 0,
-            }));
-          } else if (json?.data) {
-            const entries = Object.entries(json.data);
-            const firstReturnedTime = entries[0]?.[0] ?? startTime;
-            points = entries.map(([t, v]) => ({
-              timeLabel: formatLabel(t, firstReturnedTime),
-              value: v as number,
-            }));
-          }
-          return points;
-        });
+      const firstTime = times[0];
+      return times.map((t, i) => ({
+        timeLabel: formatLabel(t, firstTime),
+        value: values[i],
+      }));
     }
 
-    const fetches: [Promise<TSPoint[]>, Promise<TSPoint[]> | null] = [
-      fetchLayer(layer),
-      layer2 ? fetchLayer(layer2) : null,
-    ];
-
-    Promise.all(fetches.map((p) => p ?? Promise.resolve([])))
+    Promise.all([fetchLayer(layer), layer2 ? fetchLayer(layer2) : Promise.resolve(null)])
       .then(([primary, secondary]) => {
+        if (cancelled) return;
         const merged: TSPoint[] = primary.map((pt, i) => ({
           ...pt,
-          value2: secondary[i]?.value,
+          value2: secondary?.[i]?.value,
         }));
         setData(merged);
         setLoading(false);
       })
       .catch(() => {
+        if (cancelled) return;
         setData([]);
         setLoading(false);
       });
-    return () => abortCtrl.abort();
+    return () => { cancelled = true; };
   }, [probePoint, depth, availableTimes, layer, layer2]);
 
   if (!probePoint) {

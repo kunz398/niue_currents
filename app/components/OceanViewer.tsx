@@ -7,8 +7,8 @@ import LayersPanel from "./LayersPanel";
 import BottomPanel from "./BottomPanel";
 
 
-// Dynamically import MapPanel to avoid SSR issues with maplibre-gl / deck.gl
-const MapPanel = dynamic(() => import("./MapPanel"), { ssr: false });
+// Dynamically import ZarrMapPanel to avoid SSR issues with maplibre-gl / deck.gl
+const ZarrMapPanel = dynamic(() => import("./zarrMapPanel"), { ssr: false });
 
 export type DepthLevel =
   | -5
@@ -195,7 +195,7 @@ export default function OceanViewer() {
         <div className="flex flex-col flex-1 min-w-0">
           {/* Map */}
           <div className="flex-1 relative">
-            <MapPanel
+            <ZarrMapPanel
               layers={state.layers}
               depth={state.depth}
               currentTime={currentTime}

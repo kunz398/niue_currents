@@ -11,6 +11,9 @@ import {
   CartesianGrid,
 } from "recharts";
 import type { ProbePoint } from "../OceanViewer";
+import { loadDepthLevels, loadTimeSteps, loadProfileAtPoint, findNearestIndex } from "../../lib/zarrLoader";
+
+const DATASET_NAME = "d1_temp_salt_uv_z_all.zarr";
 
 interface ProfilePoint {
   depth: number;
@@ -39,46 +42,27 @@ export default function DepthProfile({
       return;
     }
     // Debounce: wait 600ms after last change before firing (avoids firing on every animation step)
-    const abortCtrl = new AbortController();
+    let cancelled = false;
     const timer = setTimeout(() => {
       setLoading(true);
 
-      function fetchLayer(lyr: string): Promise<ProfilePoint[]> {
-        const params = new URLSearchParams({
-          lon: String(probePoint!.lon),
-          lat: String(probePoint!.lat),
-          time: currentTime!,
-          layer: lyr,
+      async function fetchLayer(variable: string): Promise<ProfilePoint[]> {
+        const [depths, times] = await Promise.all([
+          loadDepthLevels(DATASET_NAME),
+          loadTimeSteps(DATASET_NAME),
+        ]);
+        const timeIndex = findNearestIndex(
+          times.map((t) => new Date(t).getTime()),
+          new Date(currentTime!).getTime()
+        );
+        const values = await loadProfileAtPoint(DATASET_NAME, variable, {
+          timeIndex,
+          lon: probePoint!.lon,
+          lat: probePoint!.lat,
         });
-        return fetch(
-          `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/profile?${params.toString()}`,
-          { signal: abortCtrl.signal }
-        )
-          .then(async (r) => {
-            if (!r.ok) return [];
-            const contentType = r.headers.get("content-type") ?? "";
-            if (!contentType.includes("application/json")) return [];
-            return r.json();
-          })
-          .then((json) => {
-            let points: ProfilePoint[] = [];
-            if (Array.isArray(json)) {
-              points = json.map((p: { depth?: number; z?: number; value?: number; elevation?: number }) => ({
-                depth: p.depth ?? p.z ?? p.elevation ?? 0,
-                value: p.value ?? 0,
-              }));
-            } else if (json?.domain?.axes?.z && json?.ranges) {
-              const zVals: number[] = json.domain.axes.z.values ?? [];
-              const rangeValues: number[] = Object.values<{ values: number[] }>(json.ranges)[0]?.values ?? [];
-              points = zVals.map((z: number, i: number) => ({ depth: z, value: rangeValues[i] ?? 0 }));
-            } else if (json?.data) {
-              points = Object.entries(json.data).map(([z, v]) => ({
-                depth: parseFloat(z),
-                value: v as number,
-              }));
-            }
-            return points.sort((a, b) => a.depth - b.depth);
-          });
+        return depths
+          .map((d, i) => ({ depth: d, value: values[i] }))
+          .sort((a, b) => a.depth - b.depth);
       }
 
       const fetchU = fetchLayer(layer);
@@ -87,6 +71,7 @@ export default function DepthProfile({
 
       Promise.allSettled([fetchU, fetchV])
         .then(([uResult, vResult]) => {
+          if (cancelled) return;
           const uPts = uResult.status === "fulfilled" ? uResult.value : [];
           const vPts =
             vResult.status === "fulfilled"
@@ -102,9 +87,9 @@ export default function DepthProfile({
           }
           setLoading(false);
         })
-        .catch(() => setLoading(false));
+        .catch(() => { if (!cancelled) setLoading(false); });
     }, 600);
-    return () => { clearTimeout(timer); abortCtrl.abort(); };
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [probePoint, currentTime, layer]);
 
   if (!probePoint) {
