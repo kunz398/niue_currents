@@ -9,6 +9,8 @@
 import { HTTPStore, openArray } from "zarr";
 import { ZARR_BASE_URL } from "./layers.config";
 
+export const CROCO_DATASET = "d1_temp_salt_uv_z_all.zarr";
+
 /* ------------------------------------------------------------------ */
 /*  Store cache – avoid reopening the same dataset repeatedly          */
 /* ------------------------------------------------------------------ */
@@ -36,7 +38,13 @@ export function getStore(
   const url = `${resolvedBase}${datasetName}`;
   let store = storeCache.get(url);
   if (!store) {
-    store = new HTTPStore(url, { fetchOptions: { mode: "cors" } });
+    // cache: "no-cache" forces a conditional revalidation (If-None-Match/
+    // If-Modified-Since) on every request instead of trusting the browser's
+    // HTTP cache freshness heuristics — without it, a forecast re-run that
+    // overwrites the same S3 keys can sit invisible behind a stale cached
+    // response until the user hard-refreshes. S3 honors conditional GETs, so
+    // unchanged chunks still come back as a cheap 304.
+    store = new HTTPStore(url, { fetchOptions: { mode: "cors", cache: "no-cache" } });
     storeCache.set(url, store);
   }
   return store;
@@ -72,19 +80,42 @@ export function getArray(
 }
 
 /**
+ * Decoded-data cache, keyed by store URL + variable. `getArray` only caches
+ * the array *handle* (metadata) — without this, every call below would
+ * re-fetch and re-decode every chunk of a coordinate array from scratch
+ * (99 separate chunk requests for `time`, since its chunk size is 1).
+ */
+const dataCache = new Map<string, Promise<unknown>>();
+
+function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
+  let promise = dataCache.get(key) as Promise<T> | undefined;
+  if (!promise) {
+    promise = load().catch((e) => {
+      dataCache.delete(key);
+      throw e;
+    });
+    dataCache.set(key, promise);
+  }
+  return promise;
+}
+
+/**
  * Load a 1-D coordinate array (depth, lat, lon, ...) as plain numbers.
  */
-async function loadCoordinateArray(
+function loadCoordinateArray(
   datasetName: string,
   variable: string,
   baseUrl?: string
 ): Promise<number[]> {
-  const arr = await getArray(datasetName, variable, baseUrl);
-  const raw = await arr.get(null);
+  const key = `${getStore(datasetName, baseUrl).url}/${variable}`;
+  return cached(key, async () => {
+    const arr = await getArray(datasetName, variable, baseUrl);
+    const raw = await arr.get(null);
 
-  // zarr.js returns a NestedArray — flatten to a plain number[]
-  const data = raw.data as ArrayLike<number>;
-  return Array.from(data);
+    // zarr.js returns a NestedArray — flatten to a plain number[]
+    const data = raw.data as ArrayLike<number>;
+    return Array.from(data);
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -169,25 +200,47 @@ function parseTimeUnits(units: string): { factor: number; epochMs: number } {
 }
 
 /**
+ * Read the time variable's CF `units` attribute ("hours since <reference>")
+ * and return that reference date as an ISO-8601 string — this is the
+ * model's initialization/run time, not a forecast time step.
+ */
+export function loadModelInitTime(
+  datasetName: string,
+  baseUrl?: string
+): Promise<string> {
+  const key = `${getStore(datasetName, baseUrl).url}/time:init`;
+  return cached(key, async () => {
+    const arr = await getArray(datasetName, "time", baseUrl);
+    const attrs = await arr.attrs.asObject();
+    const units: string = attrs.units ?? "hours since 2026-06-16 00:00:00";
+    const { epochMs } = parseTimeUnits(units);
+    return new Date(epochMs).toISOString();
+  });
+}
+
+/**
  * Load the `time` coordinate array and convert to ISO-8601 strings.
  */
-export async function loadTimeSteps(
+export function loadTimeSteps(
   datasetName: string,
   baseUrl?: string
 ): Promise<string[]> {
-  const arr = await getArray(datasetName, "time", baseUrl);
+  const key = `${getStore(datasetName, baseUrl).url}/time:iso`;
+  return cached(key, async () => {
+    const arr = await getArray(datasetName, "time", baseUrl);
 
-  // Read the `units` attribute so we know the reference epoch
-  const attrs = await arr.attrs.asObject();
-  const units: string = attrs.units ?? "hours since 2026-06-16 00:00:00";
-  const { factor, epochMs } = parseTimeUnits(units);
+    // Read the `units` attribute so we know the reference epoch
+    const attrs = await arr.attrs.asObject();
+    const units: string = attrs.units ?? "hours since 2026-06-16 00:00:00";
+    const { factor, epochMs } = parseTimeUnits(units);
 
-  const raw = await arr.get(null);
-  const data = raw.data as ArrayLike<number>;
+    const raw = await arr.get(null);
+    const data = raw.data as ArrayLike<number>;
 
-  return Array.from(data).map((offset) => {
-    const ms = epochMs + offset * factor;
-    return new Date(ms).toISOString();
+    return Array.from(data).map((offset) => {
+      const ms = epochMs + offset * factor;
+      return new Date(ms).toISOString();
+    });
   });
 }
 
@@ -252,31 +305,56 @@ export interface RasterSlice {
   width: number;
 }
 
+// Playback loops back over the same handful of time steps (and the timeline
+// scrubber revisits indices too), so cache decoded slices keyed by exactly
+// what they depend on. Bounded so a long session doesn't grow unboundedly —
+// evict the oldest entry (Map preserves insertion order) once full.
+const RASTER_SLICE_CACHE_LIMIT = 80;
+const rasterSliceCache = new Map<string, Promise<RasterSlice>>();
+
 /**
  * Read a full lat/lon grid slice of `variable` for one time step
  * (and, when the variable has a depth axis, one depth level).
  */
-export async function loadRasterSlice(
+export function loadRasterSlice(
   datasetName: string,
   variable: string,
   { timeIndex, depthIndex }: { timeIndex: number; depthIndex: number },
   baseUrl?: string
 ): Promise<RasterSlice> {
-  const arr = await getArray(datasetName, variable, baseUrl);
-  const selection =
-    arr.shape.length === 4
-      ? [timeIndex, depthIndex, null, null]
-      : [timeIndex, null, null];
+  const key = `${getStore(datasetName, baseUrl).url}/${variable}/${timeIndex}/${depthIndex}`;
+  const cached = rasterSliceCache.get(key);
+  if (cached) return cached;
 
-  const raw = await arr.get(selection);
-  const [height, width] = raw.shape;
+  const promise = (async () => {
+    const arr = await getArray(datasetName, variable, baseUrl);
+    const selection =
+      arr.shape.length === 4
+        ? [timeIndex, depthIndex, null, null]
+        : [timeIndex, null, null];
 
-  // For a 2-D get(), zarr.js's NestedArray.data is an array of per-row
-  // typed arrays, not one flat array — flatten it ourselves.
-  const rows = raw.data as ArrayLike<ArrayLike<number>>;
-  const data = new Float32Array(height * width);
-  for (let row = 0; row < height; row++) {
-    data.set(rows[row], row * width);
+    const raw = await arr.get(selection);
+    const [height, width] = raw.shape;
+
+    // For a 2-D get(), zarr.js's NestedArray.data is an array of per-row
+    // typed arrays, not one flat array — flatten it ourselves.
+    const rows = raw.data as ArrayLike<ArrayLike<number>>;
+    const data = new Float32Array(height * width);
+    for (let row = 0; row < height; row++) {
+      data.set(rows[row], row * width);
+    }
+    return { data, height, width };
+  })().catch((e) => {
+    rasterSliceCache.delete(key);
+    throw e;
+  });
+
+  rasterSliceCache.set(key, promise);
+  if (rasterSliceCache.size > RASTER_SLICE_CACHE_LIMIT) {
+    const oldestKey = rasterSliceCache.keys().next().value;
+    if (oldestKey !== undefined && oldestKey !== key) {
+      rasterSliceCache.delete(oldestKey);
+    }
   }
-  return { data, height, width };
+  return promise;
 }

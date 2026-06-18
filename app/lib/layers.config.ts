@@ -10,10 +10,10 @@ import type { WindConfig } from "./WindAnimationOverlay";
  * serving refuses to serve dotfiles — and Zarr v2 metadata files are named
  * .zarray/.zattrs/.zgroup/.zmetadata.
  */
-// export const ZARR_BASE_URL = "https://s3.ap-southeast-2.wasabisys.com/spc-zarr-file/";
+export const ZARR_BASE_URL = "https://s3.ap-southeast-2.wasabisys.com/spc-zarr-file/";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
-export const ZARR_BASE_URL = `${basePath}/api/zarr-data`;
+// export const ZARR_BASE_URL = `${basePath}/api/zarr-data`;
 
 export interface ZarrLayerConfig {
   type: "zarr";

@@ -1,21 +1,23 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
-import Map from "react-map-gl/maplibre";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import Map, { type MapRef } from "react-map-gl/maplibre";
 import { DeckGL } from "@deck.gl/react";
 import { BitmapLayer, ScatterplotLayer } from "@deck.gl/layers";
 import type { MapViewState } from "@deck.gl/core";
 import type { DepthLevel, LayerState, ProbePoint } from "./OceanViewer";
 import {
+  CROCO_DATASET,
   loadDepthLevels,
   loadTimeSteps,
   loadLatLon,
+  loadModelInitTime,
   findNearestIndex,
   loadRasterSlice,
 } from "../lib/zarrLoader";
-import { getColormap } from "../lib/colormaps";
-
-const DATASET_NAME = "d1_temp_salt_uv_z_all.zarr";
+import { getColormap, getColormapLUT, type ColormapName } from "../lib/colormaps";
+import { ZARR_BASE_URL } from "../lib/layers.config";
+import { WindAnimationOverlay } from "../lib/WindAnimationOverlay";
 
 // Niue centre
 const INITIAL_VIEW: MapViewState = {
@@ -26,26 +28,33 @@ const INITIAL_VIEW: MapViewState = {
   bearing: 0,
 };
 
-// Which Zarr variable + colour range backs each LayerState toggle.
+// Which Zarr variable + colour range/scheme backs each LayerState toggle.
 // temperature/velocity ranges match layers.config.ts's croco-temperature /
 // croco-sea-velocity entries; salinity/zeta carry over the old WMS COLORSCALERANGE.
-const RASTER_VARIABLES: Record<keyof LayerState, { variable: string; min: number; max: number; label: string }> = {
-  temperature: { variable: "temperature", min: 20, max: 30, label: "Temperature (°C)" },
-  salinity: { variable: "salinity", min: 34, max: 36, label: "Salinity (PSU)" },
-  velocity: { variable: "current_speed", min: 0, max: 0.8, label: "Velocity (m/s)" },
-  seaSurfaceHeight: { variable: "zeta", min: 0, max: 0.8, label: "Sea Surface Height (m)" },
+//
+// Colormap choice follows what each field actually represents: temperature and
+// sea surface height are diverging (cold/below-mean vs. hot/above-mean), so they
+// use red-blue; salinity and velocity magnitude have no natural midpoint, so they
+// use the sequential violet-to-yellow "viridis" ramp.
+const RASTER_VARIABLES: Record<
+  keyof LayerState,
+  { variable: string; min: number; max: number; label: string; colormap: ColormapName }
+> = {
+  temperature: { variable: "temperature", min: 20, max: 30, label: "Temperature (°C)", colormap: "red-blue" },
+  salinity: { variable: "salinity", min: 34, max: 36, label: "Salinity (PSU)", colormap: "viridis" },
+  velocity: { variable: "current_speed", min: 0, max: 0.8, label: "Velocity (m/s)", colormap: "viridis" },
+  seaSurfaceHeight: { variable: "zeta", min: 0, max: 0.8, label: "Sea Surface Height (m)", colormap: "red-blue" },
 };
 const RASTER_KEYS = Object.keys(RASTER_VARIABLES) as (keyof LayerState)[];
 
-function buildLegendGradient(): string {
-  const colormap = getColormap("jet");
+function buildLegendGradient(colormapName: ColormapName): string {
+  const colormap = getColormap(colormapName);
   const stops = [0, 0.25, 0.5, 0.75, 1].map((t) => {
     const [r, g, b] = colormap(t);
     return `rgb(${r},${g},${b}) ${t * 100}%`;
   });
   return `linear-gradient(to right, ${stops.join(", ")})`;
 }
-const LEGEND_GRADIENT = buildLegendGradient();
 
 // Basemap styles — defined at module scope so they're never recreated
 const SATELLITE_STYLE = {
@@ -101,7 +110,14 @@ interface Props {
   currentTime: string | null;
   probePoint: ProbePoint | null;
   onProbePointChange: (p: ProbePoint | null) => void;
+  particlesEnabled: boolean;
+  particleSpeed: number;
+  onModelRunTimeChange?: (iso: string | null) => void;
 }
+
+// Base displacement multiplier for the velocity flow particles before the
+// user's speed control (particleSpeed) is applied.
+const BASE_PARTICLE_SPEED_FACTOR = 0.35;
 
 export default function ZarrMapPanel({
   layers,
@@ -109,6 +125,9 @@ export default function ZarrMapPanel({
   currentTime,
   probePoint,
   onProbePointChange,
+  particlesEnabled,
+  particleSpeed,
+  onModelRunTimeChange,
 }: Props) {
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW);
   const [is3D, setIs3D] = useState(false);
@@ -116,6 +135,10 @@ export default function ZarrMapPanel({
   const [showBasemapPicker, setShowBasemapPicker] = useState(false);
   const [coords, setCoords] = useState<Coords | null>(null);
   const [raster, setRaster] = useState<RasterImage | null>(null);
+  const mapRef = useRef<MapRef>(null);
+  const [mapReady, setMapReady] = useState(false);
+  const windOverlayRef = useRef<WindAnimationOverlay | null>(null);
+  const particleMountRef = useRef<HTMLDivElement>(null);
 
   const activeKey = RASTER_KEYS.find((k) => layers[k]) ?? null;
 
@@ -123,9 +146,9 @@ export default function ZarrMapPanel({
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      loadDepthLevels(DATASET_NAME),
-      loadTimeSteps(DATASET_NAME),
-      loadLatLon(DATASET_NAME),
+      loadDepthLevels(CROCO_DATASET),
+      loadTimeSteps(CROCO_DATASET),
+      loadLatLon(CROCO_DATASET),
     ])
       .then(([depths, times, { lat, lon }]) => {
         if (cancelled) return;
@@ -138,10 +161,15 @@ export default function ZarrMapPanel({
         });
       })
       .catch((err) => console.error("Failed to load Zarr coordinates:", err));
+    loadModelInitTime(CROCO_DATASET)
+      .then((iso) => {
+        if (!cancelled) onModelRunTimeChange?.(iso);
+      })
+      .catch((err) => console.error("Failed to load model run time:", err));
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [onModelRunTimeChange]);
 
   // Rebuild the colour raster whenever the active layer, depth, or time changes.
   useEffect(() => {
@@ -151,11 +179,11 @@ export default function ZarrMapPanel({
     }
 
     let cancelled = false;
-    const { variable, min, max } = RASTER_VARIABLES[activeKey];
+    const { variable, min, max, colormap: colormapName } = RASTER_VARIABLES[activeKey];
     const timeIndex = findNearestIndex(coords.timesMs, new Date(currentTime).getTime());
     const depthIndex = findNearestIndex(coords.depths, depth);
 
-    loadRasterSlice(DATASET_NAME, variable, { timeIndex, depthIndex })
+    loadRasterSlice(CROCO_DATASET, variable, { timeIndex, depthIndex })
       .then(({ data, height, width }) => {
         if (cancelled) return;
 
@@ -166,7 +194,12 @@ export default function ZarrMapPanel({
         if (!ctx) return;
 
         const imageData = ctx.createImageData(width, height);
-        const colormap = getColormap("jet");
+        // Precomputed 256-entry RGB table — looking up a pixel's color is now a
+        // couple of array reads instead of re-running the colormap's branchy
+        // math per pixel, which matters once playback is redrawing the raster
+        // every ~400ms.
+        const lut = getColormapLUT(colormapName);
+        const lutMaxIndex = lut.length / 3 - 1;
         const range = max - min || 1;
         const latAscending = coords.lat[0] < coords.lat[coords.lat.length - 1];
         const lonAscending = coords.lon[0] < coords.lon[coords.lon.length - 1];
@@ -184,10 +217,10 @@ export default function ZarrMapPanel({
             }
 
             const t = Math.min(1, Math.max(0, (value - min) / range));
-            const [r, g, b] = colormap(t);
-            imageData.data[pixelIndex] = r;
-            imageData.data[pixelIndex + 1] = g;
-            imageData.data[pixelIndex + 2] = b;
+            const lutOffset = ((t * lutMaxIndex + 0.5) | 0) * 3;
+            imageData.data[pixelIndex] = lut[lutOffset];
+            imageData.data[pixelIndex + 1] = lut[lutOffset + 1];
+            imageData.data[pixelIndex + 2] = lut[lutOffset + 2];
             imageData.data[pixelIndex + 3] = Math.round(0.85 * 255);
           }
         }
@@ -209,6 +242,64 @@ export default function ZarrMapPanel({
       cancelled = true;
     };
   }, [coords, activeKey, depth, currentTime]);
+
+  // Drive a canvas-based flow-particle animation (u/v current vectors) on top
+  // of the map while the velocity layer is active. This is a maplibre overlay
+  // (not a deck.gl layer) so it can animate every frame without re-running
+  // deck.gl's render pipeline.
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map || !mapReady || activeKey !== "velocity" || !particlesEnabled) {
+      windOverlayRef.current?.destroy();
+      windOverlayRef.current = null;
+      return;
+    }
+
+    const overlay = new WindAnimationOverlay(
+      map,
+      {
+        datasetName: CROCO_DATASET,
+        zarrBaseUrl: ZARR_BASE_URL,
+        uVariable: "u",
+        vVariable: "v",
+        latVariable: "lat",
+        lonVariable: "lon",
+        speedFactor: BASE_PARTICLE_SPEED_FACTOR * particleSpeed,
+        particleCount: 2000,
+        particleSize: 2.6,
+        minSpeed: 0,
+        maxSpeed: 0.8,
+      },
+      particleMountRef.current ?? undefined,
+    );
+    windOverlayRef.current = overlay;
+
+    return () => {
+      overlay.destroy();
+      windOverlayRef.current = null;
+    };
+    // particleSpeed is intentionally excluded: live speed changes are pushed
+    // via setSpeedFactor() below instead of tearing down/reseeding particles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, activeKey, particlesEnabled]);
+
+  // Adjust particle speed live without recreating the overlay (avoids a reseed/flicker).
+  useEffect(() => {
+    windOverlayRef.current?.setSpeedFactor(BASE_PARTICLE_SPEED_FACTOR * particleSpeed);
+  }, [particleSpeed]);
+
+  // Keep the particle field's time/depth in sync with the rest of the panel.
+  useEffect(() => {
+    if (!coords || !currentTime) return;
+    const timeIndex = findNearestIndex(coords.timesMs, new Date(currentTime).getTime());
+    windOverlayRef.current?.setTimeIndex(timeIndex);
+  }, [coords, currentTime, activeKey]);
+
+  useEffect(() => {
+    if (!coords) return;
+    const depthIndex = findNearestIndex(coords.depths, depth);
+    windOverlayRef.current?.setDepthIndex(depthIndex);
+  }, [coords, depth, activeKey]);
 
   const rasterLayer = useMemo(
     () =>
@@ -270,6 +361,10 @@ export default function ZarrMapPanel({
   }, []);
 
   const activeLegend = activeKey ? RASTER_VARIABLES[activeKey] : null;
+  const legendGradient = useMemo(
+    () => (activeLegend ? buildLegendGradient(activeLegend.colormap) : null),
+    [activeLegend]
+  );
 
   return (
     <div className="relative w-full h-full">
@@ -284,18 +379,26 @@ export default function ZarrMapPanel({
         style={{ position: "absolute", inset: "0" }}
       >
         <Map
+          ref={mapRef}
+          onLoad={() => setMapReady(true)}
           mapStyle={BASEMAPS.find((b) => b.key === basemap)!.style as string}
           style={{ width: "100%", height: "100%" }}
           attributionControl={false}
         />
       </DeckGL>
 
+      {/* Mount point for the flow-particle canvas. Rendered as a sibling after
+          DeckGL (not inside the map container) so it stacks above deck.gl's own
+          canvas via normal DOM-order painting — z-index alone can't do this
+          since the two canvases don't share a stacking context. */}
+      <div ref={particleMountRef} className="absolute inset-0 pointer-events-none" />
+
       {/* Legend colorbar — for the single active raster layer */}
       {activeLegend && (
         <div className="absolute bottom-4 left-4 pointer-events-none select-none">
           <div className="bg-[#1a1f2e]/90 rounded-lg px-3 py-2 border border-[#2d3748]">
             <p className="text-[11px] text-slate-300 mb-1.5 font-medium">{activeLegend.label}</p>
-            <div className="h-3 w-44 rounded" style={{ background: LEGEND_GRADIENT }} />
+            <div className="h-3 w-44 rounded" style={{ background: legendGradient ?? undefined }} />
             <div className="flex justify-between mt-1">
               <span className="text-[9px] text-slate-400">{activeLegend.min}</span>
               <span className="text-[9px] text-slate-400">{activeLegend.max}</span>

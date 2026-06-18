@@ -39,6 +39,9 @@ export interface AppState {
   timeIndex: number;
   availableTimes: string[];
   probePoint: ProbePoint | null;
+  particlesEnabled: boolean;
+  particleSpeed: number;
+  modelRunTime: string | null;
 }
 
 const INITIAL_STATE: AppState = {
@@ -52,6 +55,9 @@ const INITIAL_STATE: AppState = {
   timeIndex: 0,
   availableTimes: [],
   probePoint: null,
+  particlesEnabled: true,
+  particleSpeed: 1,
+  modelRunTime: null,
 };
 
 export default function OceanViewer() {
@@ -169,6 +175,21 @@ export default function OceanViewer() {
     []
   );
 
+  const setParticlesEnabled = useCallback(
+    (enabled: boolean) => setState((s) => ({ ...s, particlesEnabled: enabled })),
+    []
+  );
+
+  const setParticleSpeed = useCallback(
+    (speed: number) => setState((s) => ({ ...s, particleSpeed: speed })),
+    []
+  );
+
+  const setModelRunTime = useCallback(
+    (iso: string | null) => setState((s) => ({ ...s, modelRunTime: iso })),
+    []
+  );
+
   const currentTime =
     state.availableTimes[state.timeIndex] ?? null;
 
@@ -186,9 +207,14 @@ export default function OceanViewer() {
           timeIndex={state.timeIndex}
           availableTimes={state.availableTimes}
           currentTime={currentTime}
+          particlesEnabled={state.particlesEnabled}
+          particleSpeed={state.particleSpeed}
+          modelRunTime={state.modelRunTime}
           onLayerToggle={setLayerToggle}
           onDepthChange={setDepth}
           onTimeIndexChange={setTimeIndex}
+          onParticlesEnabledChange={setParticlesEnabled}
+          onParticleSpeedChange={setParticleSpeed}
         />
 
         {/* Map + charts column */}
@@ -201,6 +227,9 @@ export default function OceanViewer() {
               currentTime={currentTime}
               probePoint={state.probePoint}
               onProbePointChange={setProbePoint}
+              particlesEnabled={state.particlesEnabled}
+              particleSpeed={state.particleSpeed}
+              onModelRunTimeChange={setModelRunTime}
             />
           </div>
 

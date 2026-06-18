@@ -11,9 +11,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import type { DepthLevel, ProbePoint } from "../OceanViewer";
-import { loadDepthLevels, loadTimeSteps, loadTimeSeriesAtPoint, findNearestIndex } from "../../lib/zarrLoader";
-
-const DATASET_NAME = "d1_temp_salt_uv_z_all.zarr";
+import { CROCO_DATASET, loadDepthLevels, loadTimeSteps, loadTimeSeriesAtPoint, findNearestIndex } from "../../lib/zarrLoader";
 
 interface TSPoint {
   timeLabel: string;
@@ -58,25 +56,26 @@ export default function TimeSeries({
     let cancelled = false;
     queueMicrotask(() => setLoading(true));
 
-    async function fetchLayer(variable: string): Promise<TSPoint[]> {
-      const [depths, times] = await Promise.all([
-        loadDepthLevels(DATASET_NAME),
-        loadTimeSteps(DATASET_NAME),
-      ]);
-      const depthIndex = findNearestIndex(depths, depth);
-      const values = await loadTimeSeriesAtPoint(DATASET_NAME, variable, {
-        depthIndex,
-        lon: probePoint!.lon,
-        lat: probePoint!.lat,
-      });
-      const firstTime = times[0];
-      return times.map((t, i) => ({
-        timeLabel: formatLabel(t, firstTime),
-        value: values[i],
-      }));
-    }
+    Promise.all([loadDepthLevels(CROCO_DATASET), loadTimeSteps(CROCO_DATASET)])
+      .then(([depths, times]) => {
+        const depthIndex = findNearestIndex(depths, depth);
+        const firstTime = times[0];
 
-    Promise.all([fetchLayer(layer), layer2 ? fetchLayer(layer2) : Promise.resolve(null)])
+        function fetchLayer(variable: string): Promise<TSPoint[]> {
+          return loadTimeSeriesAtPoint(CROCO_DATASET, variable, {
+            depthIndex,
+            lon: probePoint!.lon,
+            lat: probePoint!.lat,
+          }).then((values) =>
+            times.map((t, i) => ({
+              timeLabel: formatLabel(t, firstTime),
+              value: values[i],
+            }))
+          );
+        }
+
+        return Promise.all([fetchLayer(layer), layer2 ? fetchLayer(layer2) : Promise.resolve(null)]);
+      })
       .then(([primary, secondary]) => {
         if (cancelled) return;
         const merged: TSPoint[] = primary.map((pt, i) => ({

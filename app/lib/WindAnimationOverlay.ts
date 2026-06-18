@@ -191,6 +191,15 @@ function buildSliceSelection(
   });
 }
 
+// Forces a conditional revalidation (If-None-Match/If-Modified-Since) on every
+// request instead of trusting the browser's HTTP cache freshness heuristics —
+// without it, a forecast re-run that overwrites the same S3 keys can sit
+// invisible behind a stale cached response until the user hard-refreshes.
+// S3 honors conditional GETs, so unchanged chunks still come back as a cheap 304.
+const NO_CACHE_FETCH_OPTIONS = {
+  fetch: (request: Request) => fetch(request, { cache: "no-cache" as const }),
+};
+
 function readStoreMetadata(store: FetchStore) {
   return store.get("/.zmetadata")
     .then((bytes) => JSON.parse(new TextDecoder().decode(bytes))?.metadata ?? {})
@@ -209,6 +218,20 @@ export class WindAnimationOverlay {
   private depthIndex = 0;
   private lastTimestamp = 0;
   private isPanning = false;
+  // requestSeq is a ticket handed out per loadWindData() call; appliedRequestId
+  // is the ticket of the most advanced result actually applied so far. Using
+  // "<=" against appliedRequestId (rather than "!==" against requestSeq) means
+  // a result is only dropped when something newer has *already landed* — not
+  // merely because a newer request started — so playback can't stall forever
+  // if fetches take longer than the interval between time steps.
+  private requestSeq = 0;
+  private appliedRequestId = 0;
+  // Decoded per-(timeIndex, depthIndex) result, bounded so a long session
+  // doesn't grow unboundedly — evict the oldest entry once full.
+  // `Map` here would resolve to the maplibre-gl `Map` type import above, so
+  // use globalThis.Map to get the actual built-in collection.
+  private stepCache = new globalThis.Map<string, { windField: RectilinearWindField; validCells: Set<number> }>();
+  private static readonly STEP_CACHE_LIMIT = 64;
   private canvas: HTMLCanvasElement;
   private context: CanvasRenderingContext2D;
   private readonly handleResize = () => this.syncCanvasSize();
@@ -223,19 +246,24 @@ export class WindAnimationOverlay {
     this.reseedHidden();
   };
 
-  constructor(map: Map, config: WindConfig) {
+  constructor(map: Map, config: WindConfig, mountElement?: HTMLElement) {
     this.map = map;
     this.config = config;
     this.canvas = document.createElement("canvas");
     this.canvas.style.position = "absolute";
     this.canvas.style.inset = "0";
     this.canvas.style.pointerEvents = "none";
-    // Sit above the deck.gl raster overlay (added as a maplibre control) and any
-    // other map chrome so the flow streaks are always visible.
     this.canvas.style.zIndex = "10000";
     this.context = this.canvas.getContext("2d", { alpha: true })!;
 
-    const container = this.map.getContainer();
+    // The deck.gl raster overlay's own canvas lives outside maplibre's container
+    // in the DOM (as a sibling rendered after it), so z-index alone can't lift
+    // our canvas above it from inside that container — z-index only resolves
+    // ordering among siblings sharing a stacking context. When the caller hands
+    // us a mountElement (a sibling rendered after deck.gl's canvas at the page
+    // level), append there instead so normal DOM-order stacking puts particles
+    // on top; otherwise fall back to the map's own container.
+    const container = mountElement ?? this.map.getContainer();
     if (getComputedStyle(container).position === "static") {
       container.style.position = "relative";
     }
@@ -274,53 +302,150 @@ export class WindAnimationOverlay {
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
+  // Everything here is fixed for the lifetime of this overlay (same dataset/
+  // variables) — opened once and reused so each setTimeIndex()/setDepthIndex()
+  // call only has to fetch the one data slice that actually changes, instead
+  // of re-running the whole metadata/group/array-open/lat-lon round trip every
+  // playback tick (which was slow enough that particles couldn't keep up).
+  private staticFieldPromise: Promise<{
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    primaryArr: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    secondaryArr: any;
+    primaryName: string;
+    secondaryName: string;
+    useComponents: boolean;
+    secondaryMeta: Record<string, unknown> | null;
+    primaryDims: string[];
+    speedTimeAxis: number;
+    latAxis: number;
+    lonAxis: number;
+    depthAxis: number;
+    latValues: number[];
+    lonValues: number[];
+    width: number;
+    height: number;
+    lonMin: number;
+    lonMax: number;
+    latMin: number;
+    latMax: number;
+    lonStep: number;
+    latStep: number;
+    lonStepSigned: number;
+    latStepSigned: number;
+    lonWraps: boolean;
+  }> | null = null;
+
+  private loadStaticFieldData() {
+    if (this.staticFieldPromise) return this.staticFieldPromise;
+    this.staticFieldPromise = (async () => {
+      const store = new FetchStore(buildZarrUrl(this.config.datasetName, this.config.zarrBaseUrl), NO_CACHE_FETCH_OPTIONS);
+      const metadata = await readStoreMetadata(store);
+      const group = await openZarrita(store, { kind: "group" });
+      const latName = this.config.latVariable ?? "lat";
+      const lonName = this.config.lonVariable ?? "lon";
+      // Two ways to describe the flow field:
+      //   * speed + direction (waves/wind), or
+      //   * eastward (u) + northward (v) components (ocean currents).
+      // We load whichever pair is configured, then normalize everything into the
+      // internal speed/direction representation the rest of the class expects.
+      const useComponents = Boolean(this.config.uVariable && this.config.vVariable);
+      const speedName = this.config.speedVariable ?? "sig_wav_ht";
+      const directionName = this.config.directionVariable ?? "mn_wav_dir";
+      const primaryName = useComponents ? this.config.uVariable! : speedName;
+      const secondaryName = useComponents ? this.config.vVariable! : directionName;
+
+      const [latArr, lonArr, primaryArr, secondaryArr] = await Promise.all([
+        openZarrita(group.resolve(latName), { kind: "array" }),
+        openZarrita(group.resolve(lonName), { kind: "array" }),
+        openZarrita(group.resolve(primaryName), { kind: "array" }),
+        openZarrita(group.resolve(secondaryName), { kind: "array" }),
+      ]);
+      const [lat, lon] = await Promise.all([
+        zarritaGet(latArr),
+        zarritaGet(lonArr),
+      ]);
+
+      const primaryMeta = metadata?.[`${primaryName}/.zattrs`] ?? null;
+      const secondaryMeta = metadata?.[`${secondaryName}/.zattrs`] ?? null;
+      const primaryDims = getDimensionNames(primaryMeta, primaryName, primaryArr.shape);
+      const speedTimeAxis = inferTimeAxis(primaryDims);
+      const latAxis = (() => {
+        const explicit = findAxis(primaryDims, [normalizeText(latName), "lat", "latitude"]);
+        if (explicit >= 0) return explicit;
+        return primaryDims.length >= 2 ? primaryDims.length - 2 : -1;
+      })();
+      const lonAxis = (() => {
+        const explicit = findAxis(primaryDims, [normalizeText(lonName), "lon", "longitude"]);
+        if (explicit >= 0) return explicit;
+        return primaryDims.length >= 1 ? primaryDims.length - 1 : -1;
+      })();
+      const depthAxis = findAxis(primaryDims, ["depth", "z", "zlev", "lev", "level", "height"]);
+
+      const latValues = Array.from(lat.data as ArrayLike<number>, Number);
+      const lonValues = Array.from(lon.data as ArrayLike<number>, Number);
+      const width = lonValues.length;
+      const height = latValues.length;
+
+      const lonMin = Math.min(...lonValues);
+      const lonMax = Math.max(...lonValues);
+      const latMin = Math.min(...latValues);
+      const latMax = Math.max(...latValues);
+
+      const lonStep = width > 1 ? Math.abs(lonMax - lonMin) / (width - 1) : 1;
+      const latStep = height > 1 ? Math.abs(latMax - latMin) / (height - 1) : 1;
+      const lonStepSigned = width > 1 ? (lonValues[width - 1] - lonValues[0]) / (width - 1) : 1;
+      const latStepSigned = height > 1 ? (latValues[height - 1] - latValues[0]) / (height - 1) : 1;
+      // A grid that spans (nearly) the full 360° wraps around the antimeridian.
+      const lonWraps = width * lonStep >= 359;
+
+      return {
+        primaryArr, secondaryArr, primaryName, secondaryName, useComponents, secondaryMeta,
+        primaryDims, speedTimeAxis, latAxis, lonAxis, depthAxis,
+        latValues, lonValues, width, height, lonMin, lonMax, latMin, latMax,
+        lonStep, latStep, lonStepSigned, latStepSigned, lonWraps,
+      };
+    })().catch((e) => {
+      // Let the next call retry from scratch instead of caching a permanent failure.
+      this.staticFieldPromise = null;
+      throw e;
+    });
+    return this.staticFieldPromise;
+  }
+
   private async loadWindData(timeIdx = 0) {
-    const store = new FetchStore(buildZarrUrl(this.config.datasetName, this.config.zarrBaseUrl));
-    const metadata = await readStoreMetadata(store);
-    const group = await openZarrita(store, { kind: "group" });
-    const latName = this.config.latVariable ?? "lat";
-    const lonName = this.config.lonVariable ?? "lon";
-    // Two ways to describe the flow field:
-    //   * speed + direction (waves/wind), or
-    //   * eastward (u) + northward (v) components (ocean currents).
-    // We load whichever pair is configured, then normalize everything into the
-    // internal speed/direction representation the rest of the class expects.
-    const useComponents = Boolean(this.config.uVariable && this.config.vVariable);
-    const speedName = this.config.speedVariable ?? "sig_wav_ht";
-    const directionName = this.config.directionVariable ?? "mn_wav_dir";
-    const primaryName = useComponents ? this.config.uVariable! : speedName;
-    const secondaryName = useComponents ? this.config.vVariable! : directionName;
+    const requestId = ++this.requestSeq;
+    const staticData = await this.loadStaticFieldData();
+    // A newer setTimeIndex()/setDepthIndex() call has already applied its
+    // result — this one is stale, don't bother fetching the data slice at all.
+    if (requestId <= this.appliedRequestId) return;
 
-    const [latArr, lonArr, primaryArr, secondaryArr] = await Promise.all([
-      openZarrita(group.resolve(latName), { kind: "array" }),
-      openZarrita(group.resolve(lonName), { kind: "array" }),
-      openZarrita(group.resolve(primaryName), { kind: "array" }),
-      openZarrita(group.resolve(secondaryName), { kind: "array" }),
-    ]);
-    const [lat, lon] = await Promise.all([
-      zarritaGet(latArr),
-      zarritaGet(lonArr),
-    ]);
-
-    const primaryMeta = metadata?.[`${primaryName}/.zattrs`] ?? null;
-    const secondaryMeta = metadata?.[`${secondaryName}/.zattrs`] ?? null;
-    const primaryDims = getDimensionNames(primaryMeta, primaryName, primaryArr.shape);
-    const speedTimeAxis = inferTimeAxis(primaryDims);
-    const latAxis = (() => {
-      const explicit = findAxis(primaryDims, [normalizeText(latName), "lat", "latitude"]);
-      if (explicit >= 0) return explicit;
-      return primaryDims.length >= 2 ? primaryDims.length - 2 : -1;
-    })();
-    const lonAxis = (() => {
-      const explicit = findAxis(primaryDims, [normalizeText(lonName), "lon", "longitude"]);
-      if (explicit >= 0) return explicit;
-      return primaryDims.length >= 1 ? primaryDims.length - 1 : -1;
-    })();
+    const {
+      primaryArr, secondaryArr, primaryName, secondaryName, useComponents, secondaryMeta,
+      primaryDims, speedTimeAxis, latAxis, lonAxis, depthAxis,
+      latValues, lonValues, width, height, lonMin, lonMax, latMin, latMax,
+      lonStep, latStep, lonStepSigned, latStepSigned, lonWraps,
+    } = staticData;
 
     // Select the active depth level (if the field has one), otherwise any extra
     // axes are pinned to index 0 by buildSliceSelection.
-    const depthAxis = findAxis(primaryDims, ["depth", "z", "zlev", "lev", "level", "height"]);
     const depthIdx = depthAxis >= 0 ? Math.max(0, Math.min(this.depthIndex, Number(primaryArr.shape?.[depthAxis] ?? 1) - 1)) : 0;
+
+    // Playback loops over the same handful of steps repeatedly, and dragging
+    // the time slider often revisits a frame just seen — cache the decoded
+    // per-step result so those revisits are instant instead of re-fetching
+    // and re-decoding the u/v chunk over the network every time.
+    const cacheKey = `${timeIdx}:${depthIdx}`;
+    const cached = this.stepCache.get(cacheKey);
+    if (cached) {
+      if (requestId <= this.appliedRequestId) return;
+      this.appliedRequestId = requestId;
+      this.dataBounds = { lonMin, lonMax, latMin, latMax };
+      this.validCells = cached.validCells;
+      this.windField = cached.windField;
+      return;
+    }
+
     const dataSelection = buildSliceSelection(primaryDims, speedTimeAxis, latAxis, lonAxis, timeIdx, depthAxis, depthIdx);
 
     const [primary, secondary] = await Promise.all([
@@ -332,8 +457,13 @@ export class WindAnimationOverlay {
       throw new Error(`Unable to load flow slices for ${primaryName}/${secondaryName}.`);
     }
 
-    const latValues = Array.from(lat.data as ArrayLike<number>, Number);
-    const lonValues = Array.from(lon.data as ArrayLike<number>, Number);
+    // Apply only if this is still the most advanced result seen so far — an
+    // even newer request may be in flight, but as long as nothing newer has
+    // *landed* yet, this is progress and should be shown rather than dropped
+    // (dropping unconditionally on "a newer request started" can starve every
+    // update forever if fetches take longer than the playback interval).
+    if (requestId <= this.appliedRequestId) return;
+    this.appliedRequestId = requestId;
 
     let speedValues: number[];
     let directionValues: number[];
@@ -363,14 +493,7 @@ export class WindAnimationOverlay {
       directionValues = Array.from(secondary.data as ArrayLike<number>, Number);
       directionMetadata = buildDirectionMetadata(secondaryMeta);
     }
-    const width = lonValues.length;
-    const height = latValues.length;
 
-    // Compute bounding box of the grid
-    const lonMin = Math.min(...lonValues);
-    const lonMax = Math.max(...lonValues);
-    const latMin = Math.min(...latValues);
-    const latMax = Math.max(...latValues);
     this.dataBounds = { lonMin, lonMax, latMin, latMax };
 
     // Build a set of indices that have finite, non‑zero wind speed, and gather
@@ -399,13 +522,6 @@ export class WindAnimationOverlay {
       speedScale = Math.max(speedScale, speedFloor + 1e-6);
     }
 
-    const lonStep = width > 1 ? Math.abs(lonMax - lonMin) / (width - 1) : 1;
-    const latStep = height > 1 ? Math.abs(latMax - latMin) / (height - 1) : 1;
-    const lonStepSigned = width > 1 ? (lonValues[width - 1] - lonValues[0]) / (width - 1) : 1;
-    const latStepSigned = height > 1 ? (latValues[height - 1] - latValues[0]) / (height - 1) : 1;
-    // A grid that spans (nearly) the full 360° wraps around the antimeridian.
-    const lonWraps = width * lonStep >= 359;
-
     this.windField = {
       latValues,
       lonValues,
@@ -425,6 +541,14 @@ export class WindAnimationOverlay {
       speedFloor,
       speedScale,
     };
+
+    this.stepCache.set(cacheKey, { windField: this.windField, validCells: this.validCells });
+    if (this.stepCache.size > WindAnimationOverlay.STEP_CACHE_LIMIT) {
+      const oldestKey = this.stepCache.keys().next().value;
+      if (oldestKey !== undefined && oldestKey !== cacheKey) {
+        this.stepCache.delete(oldestKey);
+      }
+    }
   }
 
   // Map a lon/lat to its flattened grid index in O(1) (regular rectilinear grid).
@@ -635,16 +759,13 @@ export class WindAnimationOverlay {
     this.context.lineJoin = "round";
     for (const seg of segments) {
       const t = Math.max(0, Math.min(1, (seg.speed - floor) / range));
-      const alpha = 0.3 + 0.65 * t;
+      const alpha = 0.50 + 0.3 * t;
       const lineWidth = Math.max(0.8, particleSize * (0.5 + 0.9 * t));
-      // Near-white with a faint warm shift at high speed for a sense of energy.
-      const g = Math.round(255 - 40 * t);
-      const b = Math.round(255 - 90 * t);
 
       this.context.beginPath();
       this.context.moveTo(seg.x0, seg.y0);
       this.context.lineTo(seg.x1, seg.y1);
-      this.context.strokeStyle = `rgba(255, ${g}, ${b}, ${alpha})`;
+      this.context.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
       this.context.lineWidth = lineWidth;
       this.context.stroke();
     }
@@ -680,17 +801,26 @@ export class WindAnimationOverlay {
 
   public setTimeIndex(index: number) {
     this.timeIndex = index;
+    // During playback this fires every ~400ms — a full reseed (seedParticles(true))
+    // would teleport all particles to new random spots every tick, which looks like
+    // stutter rather than flow. seedParticles(false) only replaces particles that
+    // are no longer over valid data, so the rest keep animating continuously.
     this.loadWindData(index).then(() => {
-      this.seedParticles(true);
+      this.seedParticles(false);
       this.ensureVisibleParticles();
     });
   }
 
+  public setSpeedFactor(factor: number) {
+    this.config.speedFactor = factor;
+  }
+
   public setDepthIndex(index: number) {
     this.depthIndex = Math.max(0, index);
-    // Reload the flow field at the new depth, then reseed so particles reflect it.
+    // Reload the flow field at the new depth; keep existing particles in place
+    // (see setTimeIndex) rather than snapping everything to new random spots.
     this.loadWindData(this.timeIndex).then(() => {
-      this.seedParticles(true);
+      this.seedParticles(false);
       this.ensureVisibleParticles();
     });
   }

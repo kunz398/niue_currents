@@ -264,12 +264,34 @@ export default function TimeStep({ timeIndex, availableTimes, depth, disableDept
   }, []);
 
   useEffect(() => {
+    // Native pointer-move events can fire far more often than the index can
+    // usefully change (each step reloads a wind/raster slice over the
+    // network) — coalesce to at most once per animation frame so a fast drag
+    // doesn't queue up many more loadWindData/raster calls than the screen
+    // can even show, which is what made fast scrubbing feel laggy.
+    let rafId = 0;
+    let pendingX: number | null = null;
+
+    const commit = () => {
+      rafId = 0;
+      if (pendingX === null) return;
+      onTimeRef.current(Math.round(getFrac(pendingX) * (totalRef.current - 1)));
+      pendingX = null;
+    };
+
     const onMove = (e: MouseEvent | TouchEvent) => {
       if (!dragging.current) return;
-      const x = "touches" in e ? e.touches[0]?.clientX ?? 0 : e.clientX;
-      onTimeRef.current(Math.round(getFrac(x) * (totalRef.current - 1)));
+      pendingX = "touches" in e ? e.touches[0]?.clientX ?? 0 : e.clientX;
+      if (!rafId) rafId = requestAnimationFrame(commit);
     };
-    const onUp = () => { dragging.current = false; };
+    const onUp = () => {
+      dragging.current = false;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      pendingX = null;
+    };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     window.addEventListener("touchmove", onMove, { passive: true });
@@ -279,6 +301,7 @@ export default function TimeStep({ timeIndex, availableTimes, depth, disableDept
       window.removeEventListener("mouseup", onUp);
       window.removeEventListener("touchmove", onMove);
       window.removeEventListener("touchend", onUp);
+      if (rafId) cancelAnimationFrame(rafId);
     };
   }, [getFrac]);
 

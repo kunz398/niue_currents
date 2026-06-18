@@ -11,9 +11,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import type { ProbePoint } from "../OceanViewer";
-import { loadDepthLevels, loadTimeSteps, loadProfileAtPoint, findNearestIndex } from "../../lib/zarrLoader";
-
-const DATASET_NAME = "d1_temp_salt_uv_z_all.zarr";
+import { CROCO_DATASET, loadDepthLevels, loadTimeSteps, loadProfileAtPoint, findNearestIndex } from "../../lib/zarrLoader";
 
 interface ProfilePoint {
   depth: number;
@@ -46,30 +44,31 @@ export default function DepthProfile({
     const timer = setTimeout(() => {
       setLoading(true);
 
-      async function fetchLayer(variable: string): Promise<ProfilePoint[]> {
-        const [depths, times] = await Promise.all([
-          loadDepthLevels(DATASET_NAME),
-          loadTimeSteps(DATASET_NAME),
-        ]);
-        const timeIndex = findNearestIndex(
-          times.map((t) => new Date(t).getTime()),
-          new Date(currentTime!).getTime()
-        );
-        const values = await loadProfileAtPoint(DATASET_NAME, variable, {
-          timeIndex,
-          lon: probePoint!.lon,
-          lat: probePoint!.lat,
-        });
-        return depths
-          .map((d, i) => ({ depth: d, value: values[i] }))
-          .sort((a, b) => a.depth - b.depth);
-      }
+      Promise.all([loadDepthLevels(CROCO_DATASET), loadTimeSteps(CROCO_DATASET)])
+        .then(([depths, times]) => {
+          const timeIndex = findNearestIndex(
+            times.map((t) => new Date(t).getTime()),
+            new Date(currentTime!).getTime()
+          );
 
-      const fetchU = fetchLayer(layer);
-      const fetchV: Promise<ProfilePoint[] | null> =
-        layer === "u" ? fetchLayer("v") : Promise.resolve(null);
+          function fetchLayer(variable: string): Promise<ProfilePoint[]> {
+            return loadProfileAtPoint(CROCO_DATASET, variable, {
+              timeIndex,
+              lon: probePoint!.lon,
+              lat: probePoint!.lat,
+            }).then((values) =>
+              depths
+                .map((d, i) => ({ depth: d, value: values[i] }))
+                .sort((a, b) => a.depth - b.depth)
+            );
+          }
 
-      Promise.allSettled([fetchU, fetchV])
+          const fetchU = fetchLayer(layer);
+          const fetchV: Promise<ProfilePoint[] | null> =
+            layer === "u" ? fetchLayer("v") : Promise.resolve(null);
+
+          return Promise.allSettled([fetchU, fetchV]);
+        })
         .then(([uResult, vResult]) => {
           if (cancelled) return;
           const uPts = uResult.status === "fulfilled" ? uResult.value : [];

@@ -131,6 +131,15 @@ function normalizeWaveDirectionForIcon(rawAngle: number, metadata: DirectionMeta
   return ((iconAngle + offset) % 360 + 360) % 360;
 }
 
+// Forces a conditional revalidation (If-None-Match/If-Modified-Since) on every
+// request instead of trusting the browser's HTTP cache freshness heuristics —
+// without it, a forecast re-run that overwrites the same S3 keys can sit
+// invisible behind a stale cached response until the user hard-refreshes.
+// S3 honors conditional GETs, so unchanged chunks still come back as a cheap 304.
+const NO_CACHE_FETCH_OPTIONS = {
+  fetch: (request: Request) => fetch(request, { cache: "no-cache" as const }),
+};
+
 async function fetchZarrAttributes(store: FetchStore, variableName: string) {
   try {
     const bytes = await store.get("/.zmetadata");
@@ -253,7 +262,7 @@ export class UgridOverlay {
   private async loadDatasetMetadata() {
     if (this.dataset) return this.dataset;
 
-    const store = new FetchStore(buildZarrUrl(this.config.datasetName, this.config.zarrBaseUrl));
+    const store = new FetchStore(buildZarrUrl(this.config.datasetName, this.config.zarrBaseUrl), NO_CACHE_FETCH_OPTIONS);
     const group = await openZarrita(store, { kind: "group" });
 
     const [lonArr, latArr, faceArr, timeArr] = await Promise.all([

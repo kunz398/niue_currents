@@ -13,9 +13,7 @@ import {
   ReferenceDot,
 } from "recharts";
 import type { ProbePoint } from "../OceanViewer";
-import { loadDepthLevels, loadTimeSteps, loadProfileAtPoint, findNearestIndex } from "../../lib/zarrLoader";
-
-const DATASET_NAME = "d1_temp_salt_uv_z_all.zarr";
+import { CROCO_DATASET, loadDepthLevels, loadTimeSteps, loadProfileAtPoint, findNearestIndex } from "../../lib/zarrLoader";
 
 interface TSDataPoint {
   depth: number;
@@ -78,15 +76,15 @@ export default function TSDiagram({ probePoint, currentTime }: Props) {
     const timer = setTimeout(() => {
       setLoading(true);
 
-      Promise.all([loadDepthLevels(DATASET_NAME), loadTimeSteps(DATASET_NAME)])
+      Promise.all([loadDepthLevels(CROCO_DATASET), loadTimeSteps(CROCO_DATASET)])
         .then(async ([depths, times]) => {
           const timeIndex = findNearestIndex(
             times.map((t) => new Date(t).getTime()),
             new Date(currentTime).getTime()
           );
           const [temperature, salinity] = await Promise.all([
-            loadProfileAtPoint(DATASET_NAME, "temperature", { timeIndex, lon: probePoint.lon, lat: probePoint.lat }),
-            loadProfileAtPoint(DATASET_NAME, "salinity", { timeIndex, lon: probePoint.lon, lat: probePoint.lat }),
+            loadProfileAtPoint(CROCO_DATASET, "temperature", { timeIndex, lon: probePoint.lon, lat: probePoint.lat }),
+            loadProfileAtPoint(CROCO_DATASET, "salinity", { timeIndex, lon: probePoint.lon, lat: probePoint.lat }),
           ]);
           return depths.map((d, i) => ({
             depth: d,
