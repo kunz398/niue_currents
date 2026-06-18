@@ -201,15 +201,51 @@ export default function ZarrMapPanel({
         const lut = getColormapLUT(colormapName);
         const lutMaxIndex = lut.length / 3 - 1;
         const range = max - min || 1;
-        const latAscending = coords.lat[0] < coords.lat[coords.lat.length - 1];
-        const lonAscending = coords.lon[0] < coords.lon[coords.lon.length - 1];
 
-        for (let latIdx = 0; latIdx < height; latIdx++) {
-          const row = latAscending ? height - 1 - latIdx : latIdx;
-          for (let lonIdx = 0; lonIdx < width; lonIdx++) {
-            const col = lonAscending ? lonIdx : width - 1 - lonIdx;
-            const value = data[latIdx * width + lonIdx];
-            const pixelIndex = (row * width + col) * 4;
+        // The grid rows are evenly spaced in *latitude*, but deck.gl's
+        // BitmapLayer paints the texture evenly in *Web-Mercator Y*. Over this
+        // dataset's ~6° tall extent that mismatch slides the land mask ~3 km
+        // (several cells) off the coastline near the island. Fix it by
+        // resampling every output row to a uniform Mercator step, picking the
+        // model row whose latitude actually falls there. Longitude needs no such
+        // correction — it's linear in Mercator X — so columns map straight through.
+        const latN = coords.lat.length;
+        const lonN = coords.lon.length;
+        const latStep = (coords.lat[latN - 1] - coords.lat[0]) / (latN - 1); // signed
+        const lonStep = (coords.lon[lonN - 1] - coords.lon[0]) / (lonN - 1); // signed
+        const lonAscending = lonStep > 0;
+
+        // BitmapLayer bounds are the outer *edges* of the image, but lat/lon
+        // hold cell *centres*; extend by half a cell so the raster isn't shifted
+        // inward by half a grid cell.
+        const latEdgeMin = Math.min(coords.lat[0], coords.lat[latN - 1]) - Math.abs(latStep) / 2;
+        const latEdgeMax = Math.max(coords.lat[0], coords.lat[latN - 1]) + Math.abs(latStep) / 2;
+        const lonEdgeMin = Math.min(coords.lon[0], coords.lon[lonN - 1]) - Math.abs(lonStep) / 2;
+        const lonEdgeMax = Math.max(coords.lon[0], coords.lon[lonN - 1]) + Math.abs(lonStep) / 2;
+
+        const d2r = Math.PI / 180;
+        const mercY = (deg: number) => Math.log(Math.tan(Math.PI / 4 + (deg * d2r) / 2));
+        const invMercY = (y: number) => (2 * Math.atan(Math.exp(y)) - Math.PI / 2) / d2r;
+        const mercTop = mercY(latEdgeMax); // output row 0 = north
+        const mercBot = mercY(latEdgeMin);
+
+        for (let row = 0; row < height; row++) {
+          // Latitude at this output row's Mercator centre, then the model row
+          // whose cell that latitude lands in.
+          const lat = invMercY(mercTop + ((row + 0.5) / height) * (mercBot - mercTop));
+          const srcRow = Math.round((lat - coords.lat[0]) / latStep);
+          const rowOff = row * width * 4;
+
+          if (srcRow < 0 || srcRow >= latN) {
+            for (let col = 0; col < width; col++) imageData.data[rowOff + col * 4 + 3] = 0;
+            continue;
+          }
+
+          const srcRowOff = srcRow * width;
+          for (let col = 0; col < width; col++) {
+            const srcCol = lonAscending ? col : width - 1 - col;
+            const value = data[srcRowOff + srcCol];
+            const pixelIndex = rowOff + col * 4;
 
             if (!Number.isFinite(value)) {
               imageData.data[pixelIndex + 3] = 0;
@@ -228,12 +264,7 @@ export default function ZarrMapPanel({
         ctx.putImageData(imageData, 0, 0);
         setRaster({
           canvas,
-          bounds: [
-            Math.min(...coords.lon),
-            Math.min(...coords.lat),
-            Math.max(...coords.lon),
-            Math.max(...coords.lat),
-          ],
+          bounds: [lonEdgeMin, latEdgeMin, lonEdgeMax, latEdgeMax],
         });
       })
       .catch((err) => console.error("Failed to load raster slice:", err));
