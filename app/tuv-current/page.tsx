@@ -19,9 +19,8 @@ export default function TuvCurrentPage() {
   return (
     <OceanViewer
       title="Tuvalu Ocean Circulation Forecast"
-      datasetName="tuv_d1_temp_salt_uv_z_all"
+      datasetName="tuv_d1_temp_salt_uv_z_all.zarr"
       initialView={TUV_INITIAL_VIEW}
-      disabledLayers={["seaSurfaceHeight"]}
     />
   );
 }

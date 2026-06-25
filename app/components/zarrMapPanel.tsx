@@ -44,7 +44,11 @@ const RASTER_VARIABLES: Record<
   temperature: { variable: "temperature", min: 20, max: 30, label: "Temperature (°C)", colormap: "red-blue" },
   salinity: { variable: "salinity", min: 34, max: 36, label: "Salinity (PSU)", colormap: "viridis" },
   velocity: { variable: "current_speed", min: 0, max: 0.8, label: "Velocity (m/s)", colormap: "viridis" },
-  seaSurfaceHeight: { variable: "zeta", min: 0, max: 0.8, label: "Sea Surface Height (m)", colormap: "red-blue" },
+  // zeta is "free-surface elevation above geoid", not a zero-centered
+  // anomaly — both Niue and Tuvalu's actual data clusters around 0.45-0.87m
+  // (verified against the live datasets), so the domain is set to that band
+  // rather than 0-0.8 to avoid washing out almost the whole map in one color.
+  seaSurfaceHeight: { variable: "zeta", min: 0.4, max: 0.9, label: "Sea Surface Height (m)", colormap: "red-blue" },
 };
 const RASTER_KEYS = Object.keys(RASTER_VARIABLES) as (keyof LayerState)[];
 

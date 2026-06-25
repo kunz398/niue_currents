@@ -51,7 +51,7 @@ export default function Home() {
         </p> */}
 
         <div className="mb-6 text-base text-[#d7e6ff]">
-          Select a location to explore forecasts and ocean data
+          Select a location to explore forecasts
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-8">
