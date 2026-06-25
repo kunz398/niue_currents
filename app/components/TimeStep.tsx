@@ -264,12 +264,34 @@ export default function TimeStep({ timeIndex, availableTimes, depth, disableDept
   }, []);
 
   useEffect(() => {
+    // Native pointer-move events can fire far more often than the index can
+    // usefully change (each step reloads a wind/raster slice over the
+    // network) — coalesce to at most once per animation frame so a fast drag
+    // doesn't queue up many more loadWindData/raster calls than the screen
+    // can even show, which is what made fast scrubbing feel laggy.
+    let rafId = 0;
+    let pendingX: number | null = null;
+
+    const commit = () => {
+      rafId = 0;
+      if (pendingX === null) return;
+      onTimeRef.current(Math.round(getFrac(pendingX) * (totalRef.current - 1)));
+      pendingX = null;
+    };
+
     const onMove = (e: MouseEvent | TouchEvent) => {
       if (!dragging.current) return;
-      const x = "touches" in e ? e.touches[0]?.clientX ?? 0 : e.clientX;
-      onTimeRef.current(Math.round(getFrac(x) * (totalRef.current - 1)));
+      pendingX = "touches" in e ? e.touches[0]?.clientX ?? 0 : e.clientX;
+      if (!rafId) rafId = requestAnimationFrame(commit);
     };
-    const onUp = () => { dragging.current = false; };
+    const onUp = () => {
+      dragging.current = false;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      pendingX = null;
+    };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     window.addEventListener("touchmove", onMove, { passive: true });
@@ -279,6 +301,7 @@ export default function TimeStep({ timeIndex, availableTimes, depth, disableDept
       window.removeEventListener("mouseup", onUp);
       window.removeEventListener("touchmove", onMove);
       window.removeEventListener("touchend", onUp);
+      if (rafId) cancelAnimationFrame(rafId);
     };
   }, [getFrac]);
 
@@ -361,11 +384,16 @@ export default function TimeStep({ timeIndex, availableTimes, depth, disableDept
           </div>
           <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
             {DEPTH_LEVELS.map((d, i) => (
-              <div
+              <button
                 key={d}
+                type="button"
                 title={`${Math.abs(d)}m`}
+                aria-label={`Set depth to ${Math.abs(d)}m`}
+                aria-pressed={i === depthIdx}
+                onClick={() => onDepthChange(d)}
                 style={{
-                  flex: 1, height: i === depthIdx ? 5 : 3, borderRadius: 2,
+                  flex: 1, height: i === depthIdx ? 5 : 3, borderRadius: 2, border: "none",
+                  padding: 0, cursor: "pointer",
                   background: i < depthIdx
                     ? "#7dd3fc"
                     : i === depthIdx
@@ -383,7 +411,7 @@ export default function TimeStep({ timeIndex, availableTimes, depth, disableDept
       <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px 8px", borderTop: "0.5px solid rgba(255,255,255,0.06)" }}>
 
         {/* Skip back */}
-        <button onClick={skipBack} style={chipBtn}>
+        <button onClick={skipBack} aria-label="Skip back" style={chipBtn}>
           <svg width="10" height="10" viewBox="0 0 10 10" fill="#7dd3fc">
             <polygon points="9,1 4,5 9,9" />
             <rect x="1" y="1" width="2" height="8" />
@@ -393,6 +421,8 @@ export default function TimeStep({ timeIndex, availableTimes, depth, disableDept
         {/* Play / Pause */}
         <button
           onClick={() => setPlaying(p => !p)}
+          aria-label={playing ? "Pause" : "Play"}
+          aria-pressed={playing}
           style={{ ...chipBtn, width: 28, height: 28, background: "rgba(125,211,252,0.18)" }}
         >
           <svg width="11" height="11" viewBox="0 0 12 12" fill="#7dd3fc">
@@ -404,7 +434,7 @@ export default function TimeStep({ timeIndex, availableTimes, depth, disableDept
         </button>
 
         {/* Skip forward */}
-        <button onClick={skipFwd} style={chipBtn}>
+        <button onClick={skipFwd} aria-label="Skip forward" style={chipBtn}>
           <svg width="10" height="10" viewBox="0 0 10 10" fill="#7dd3fc">
             <polygon points="1,1 6,5 1,9" />
             <rect x="7" y="1" width="2" height="8" />

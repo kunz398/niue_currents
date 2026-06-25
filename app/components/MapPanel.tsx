@@ -131,7 +131,7 @@ const TOPO_STYLE = {
       type: "raster" as const,
       tiles: ["https://tile.opentopomap.org/{z}/{x}/{y}.png"],
       tileSize: 256,
-      attribution: "Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)",
+      // attribution: "Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)",
     },
   },
   layers: [{ id: "topo", type: "raster" as const, source: "topo" }],

@@ -13,6 +13,7 @@ import {
   ReferenceDot,
 } from "recharts";
 import type { ProbePoint } from "../OceanViewer";
+import { CROCO_DATASET, loadDepthLevels, loadTimeSteps, loadProfileAtPoint, findNearestIndex } from "../../lib/zarrLoader";
 
 interface TSDataPoint {
   depth: number;
@@ -39,6 +40,16 @@ const WATER_MASSES: WaterMassPoint[] = [
   { key: "LCDW", x: 34.7, y: 1.5, label: "LCDW", labelPosition: "right", labelOffset: 10 },
 ];
 
+// Full names for the abbreviations plotted above, shown as a hover glossary.
+const WATER_MASS_NAMES: Record<string, string> = {
+  SPTW: "South Pacific Tropical Water",
+  SPEW: "South Pacific Eastern Water",
+  AAIW: "Antarctic Intermediate Water",
+  SAMW: "Subantarctic Mode Water",
+  PDW: "Pacific Deep Water",
+  LCDW: "Lower Circumpolar Deep Water",
+};
+
 // Map depth to a colour in the same style as the depth picker
 const DEPTH_COLOUR_MAP: Record<string, string> = {
   "-5": "#ef4444",
@@ -60,9 +71,10 @@ function depthColour(depth: number): string {
 interface Props {
   probePoint: ProbePoint | null;
   currentTime: string | null;
+  datasetName?: string;
 }
 
-export default function TSDiagram({ probePoint, currentTime }: Props) {
+export default function TSDiagram({ probePoint, currentTime, datasetName = CROCO_DATASET }: Props) {
   const [data, setData] = useState<TSDataPoint[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -71,24 +83,35 @@ export default function TSDiagram({ probePoint, currentTime }: Props) {
       return;
     }
     // Debounce: wait 600ms after last change before firing
-    const abortCtrl = new AbortController();
+    let cancelled = false;
     const timer = setTimeout(() => {
       setLoading(true);
-      const params = new URLSearchParams({
-        lon: String(probePoint.lon),
-        lat: String(probePoint.lat),
-        time: currentTime,
-      });
-      fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/tsdata?${params.toString()}`, { signal: abortCtrl.signal })
-        .then((r) => r.json())
-        .then((json: TSDataPoint[]) => {
-          setData(Array.isArray(json) ? json : []);
+
+      Promise.all([loadDepthLevels(datasetName), loadTimeSteps(datasetName)])
+        .then(async ([depths, times]) => {
+          const timeIndex = findNearestIndex(
+            times.map((t) => new Date(t).getTime()),
+            new Date(currentTime).getTime()
+          );
+          const [temperature, salinity] = await Promise.all([
+            loadProfileAtPoint(datasetName, "temperature", { timeIndex, lon: probePoint.lon, lat: probePoint.lat }),
+            loadProfileAtPoint(datasetName, "salinity", { timeIndex, lon: probePoint.lon, lat: probePoint.lat }),
+          ]);
+          return depths.map((d, i) => ({
+            depth: d,
+            temperature: temperature[i] ?? null,
+            salinity: salinity[i] ?? null,
+          }));
+        })
+        .then((points) => {
+          if (cancelled) return;
+          setData(points);
           setLoading(false);
         })
-        .catch(() => setLoading(false));
+        .catch(() => { if (!cancelled) setLoading(false); });
     }, 600);
-    return () => { clearTimeout(timer); abortCtrl.abort(); };
-  }, [probePoint, currentTime]);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [probePoint, currentTime, datasetName]);
 
   if (!probePoint) {
     return (
@@ -125,8 +148,9 @@ export default function TSDiagram({ probePoint, currentTime }: Props) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={155}>
-      <ScatterChart margin={{ top: 8, right: 16, bottom: 20, left: 24 }}>
+    <div className="flex h-full flex-col">
+      <ResponsiveContainer width="100%" height={155}>
+        <ScatterChart margin={{ top: 8, right: 16, bottom: 20, left: 24 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#2d3748" />
         <XAxis
           type="number"
@@ -186,5 +210,16 @@ export default function TSDiagram({ probePoint, currentTime }: Props) {
         ))}
       </ScatterChart>
     </ResponsiveContainer>
+      <div className="shrink-0 overflow-x-auto whitespace-nowrap px-1 pb-1 text-[9px] text-slate-500">
+        {WATER_MASSES.map((wm, i) => (
+          <span key={wm.key}>
+            <abbr title={WATER_MASS_NAMES[wm.key] ?? wm.label} className="cursor-help no-underline">
+              {wm.label}
+            </abbr>
+            {i < WATER_MASSES.length - 1 ? ", " : ""}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
