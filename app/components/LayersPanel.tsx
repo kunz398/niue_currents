@@ -20,6 +20,7 @@ interface Props {
   particlesEnabled: boolean;
   particleSpeed: number;
   modelRunTime?: string | null;
+  disabledLayers?: (keyof LayerState)[];
   onLayerToggle: (key: keyof LayerState, value: boolean) => void;
   onDepthChange: (d: DepthLevel) => void;
   onTimeIndexChange: (i: number) => void;
@@ -35,6 +36,7 @@ export default function LayersPanel({
   particlesEnabled,
   particleSpeed,
   modelRunTime,
+  disabledLayers,
   onLayerToggle,
   onDepthChange,
   onTimeIndexChange,
@@ -51,11 +53,13 @@ export default function LayersPanel({
         <div style={{ display: "flex", flexDirection: "column", gap: 3, background: "rgba(0,0,0,0.25)", borderRadius: 10, padding: 3 }}>
           {LAYER_CONFIG.map(({ key, label, color, unit }) => {
             const isActive = layers[key];
+            const isDisabled = disabledLayers?.includes(key) ?? false;
             return (
               <button
                 key={key}
                 type="button"
                 aria-pressed={isActive}
+                disabled={isDisabled}
                 onClick={() => onLayerToggle(key, true)}
                 style={{
                   display: "flex",
@@ -65,25 +69,26 @@ export default function LayersPanel({
                   border: "none",
                   padding: "7px 10px",
                   borderRadius: 8,
-                  cursor: "pointer",
+                  cursor: isDisabled ? "not-allowed" : "pointer",
                   textAlign: "left",
-                  background: isActive ? "rgba(255,255,255,0.1)" : "transparent",
+                  background: isActive && !isDisabled ? "rgba(255,255,255,0.1)" : "transparent",
+                  opacity: isDisabled ? 0.4 : 1,
                   transition: "background 0.15s",
                 }}
               >
                 <span style={{
-                  width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0,
-                  boxShadow: isActive ? `0 0 6px ${color}` : "none",
+                  width: 7, height: 7, borderRadius: "50%", background: isDisabled ? "rgba(255,255,255,0.3)" : color, flexShrink: 0,
+                  boxShadow: isActive && !isDisabled ? `0 0 6px ${color}` : "none",
                   transition: "box-shadow 0.2s",
                 }} />
                 <span style={{
-                  fontSize: 12, fontWeight: isActive ? 500 : 400, flex: 1,
-                  color: isActive ? "#fff" : "rgba(255,255,255,0.4)",
+                  fontSize: 12, fontWeight: isActive && !isDisabled ? 500 : 400, flex: 1,
+                  color: isActive && !isDisabled ? "#fff" : "rgba(255,255,255,0.4)",
                   transition: "color 0.15s",
                 }}>
-                  {label}
+                  {label}{isDisabled ? " (disabled)" : ""}
                 </span>
-                {isActive && (
+                {isActive && !isDisabled && (
                   <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{unit}</span>
                 )}
               </button>

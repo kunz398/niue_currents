@@ -27,6 +27,7 @@ interface Props {
   label?: string;
   layer2?: string;
   label2?: string;
+  datasetName?: string;
 }
 
 function formatLabel(iso: string, firstIso: string): string {
@@ -44,6 +45,7 @@ export default function TimeSeries({
   label = "Temp (°C)",
   layer2,
   label2,
+  datasetName = CROCO_DATASET,
 }: Props) {
   const [data, setData] = useState<TSPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -56,13 +58,13 @@ export default function TimeSeries({
     let cancelled = false;
     queueMicrotask(() => setLoading(true));
 
-    Promise.all([loadDepthLevels(CROCO_DATASET), loadTimeSteps(CROCO_DATASET)])
+    Promise.all([loadDepthLevels(datasetName), loadTimeSteps(datasetName)])
       .then(([depths, times]) => {
         const depthIndex = findNearestIndex(depths, depth);
         const firstTime = times[0];
 
         function fetchLayer(variable: string): Promise<TSPoint[]> {
-          return loadTimeSeriesAtPoint(CROCO_DATASET, variable, {
+          return loadTimeSeriesAtPoint(datasetName, variable, {
             depthIndex,
             lon: probePoint!.lon,
             lat: probePoint!.lat,
@@ -91,7 +93,7 @@ export default function TimeSeries({
         setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [probePoint, depth, availableTimes, layer, layer2]);
+  }, [probePoint, depth, availableTimes, layer, layer2, datasetName]);
 
   if (!probePoint) {
     return (

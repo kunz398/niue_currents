@@ -1,5 +1,6 @@
 "use client";
 
+import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Map, { type MapRef } from "react-map-gl/maplibre";
 import { DeckGL } from "@deck.gl/react";
@@ -20,7 +21,7 @@ import { ZARR_BASE_URL } from "../lib/layers.config";
 import { WindAnimationOverlay } from "../lib/WindAnimationOverlay";
 
 // Niue centre
-const INITIAL_VIEW: MapViewState = {
+const DEFAULT_INITIAL_VIEW: MapViewState = {
   longitude: -169.0,
   latitude: -19.05,
   zoom: 7,
@@ -77,7 +78,7 @@ const TOPO_STYLE = {
       type: "raster" as const,
       tiles: ["https://tile.opentopomap.org/{z}/{x}/{y}.png"],
       tileSize: 256,
-      attribution: "Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)",
+      // attribution: "Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)",
     },
   },
   layers: [{ id: "topo", type: "raster" as const, source: "topo" }],
@@ -113,6 +114,9 @@ interface Props {
   particlesEnabled: boolean;
   particleSpeed: number;
   onModelRunTimeChange?: (iso: string | null) => void;
+  onTimesChange?: (times: string[]) => void;
+  datasetName?: string;
+  initialView?: MapViewState;
 }
 
 // Base displacement multiplier for the velocity flow particles before the
@@ -128,8 +132,11 @@ export default function ZarrMapPanel({
   particlesEnabled,
   particleSpeed,
   onModelRunTimeChange,
+  onTimesChange,
+  datasetName = CROCO_DATASET,
+  initialView = DEFAULT_INITIAL_VIEW,
 }: Props) {
-  const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW);
+  const [viewState, setViewState] = useState<MapViewState>(initialView);
   const [is3D, setIs3D] = useState(false);
   const [basemap, setBasemap] = useState<"dark" | "osm" | "carto" | "satellite" | "topo">("topo");
   const [showBasemapPicker, setShowBasemapPicker] = useState(false);
@@ -146,9 +153,9 @@ export default function ZarrMapPanel({
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      loadDepthLevels(CROCO_DATASET),
-      loadTimeSteps(CROCO_DATASET),
-      loadLatLon(CROCO_DATASET),
+      loadDepthLevels(datasetName),
+      loadTimeSteps(datasetName),
+      loadLatLon(datasetName),
     ])
       .then(([depths, times, { lat, lon }]) => {
         if (cancelled) return;
@@ -159,9 +166,10 @@ export default function ZarrMapPanel({
           lat,
           lon,
         });
+        onTimesChange?.(times);
       })
       .catch((err) => console.error("Failed to load Zarr coordinates:", err));
-    loadModelInitTime(CROCO_DATASET)
+    loadModelInitTime(datasetName)
       .then((iso) => {
         if (!cancelled) onModelRunTimeChange?.(iso);
       })
@@ -169,7 +177,7 @@ export default function ZarrMapPanel({
     return () => {
       cancelled = true;
     };
-  }, [onModelRunTimeChange]);
+  }, [datasetName, onModelRunTimeChange, onTimesChange]);
 
   // Rebuild the colour raster whenever the active layer, depth, or time changes.
   useEffect(() => {
@@ -183,7 +191,7 @@ export default function ZarrMapPanel({
     const timeIndex = findNearestIndex(coords.timesMs, new Date(currentTime).getTime());
     const depthIndex = findNearestIndex(coords.depths, depth);
 
-    loadRasterSlice(CROCO_DATASET, variable, { timeIndex, depthIndex })
+    loadRasterSlice(datasetName, variable, { timeIndex, depthIndex })
       .then(({ data, height, width }) => {
         if (cancelled) return;
 
@@ -272,7 +280,7 @@ export default function ZarrMapPanel({
     return () => {
       cancelled = true;
     };
-  }, [coords, activeKey, depth, currentTime]);
+  }, [coords, activeKey, depth, currentTime, datasetName]);
 
   // Drive a canvas-based flow-particle animation (u/v current vectors) on top
   // of the map while the velocity layer is active. This is a maplibre overlay
@@ -289,7 +297,7 @@ export default function ZarrMapPanel({
     const overlay = new WindAnimationOverlay(
       map,
       {
-        datasetName: CROCO_DATASET,
+        datasetName,
         zarrBaseUrl: ZARR_BASE_URL,
         uVariable: "u",
         vVariable: "v",
@@ -312,7 +320,7 @@ export default function ZarrMapPanel({
     // particleSpeed is intentionally excluded: live speed changes are pushed
     // via setSpeedFactor() below instead of tearing down/reseeding particles.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, activeKey, particlesEnabled]);
+  }, [mapReady, activeKey, particlesEnabled, datasetName]);
 
   // Adjust particle speed live without recreating the overlay (avoids a reseed/flicker).
   useEffect(() => {
@@ -332,18 +340,26 @@ export default function ZarrMapPanel({
     windOverlayRef.current?.setDepthIndex(depthIndex);
   }, [coords, depth, activeKey]);
 
-  const rasterLayer = useMemo(
-    () =>
-      raster
-        ? new BitmapLayer({
-            id: "zarr-raster",
-            image: raster.canvas,
-            bounds: raster.bounds,
-            opacity: 0.85,
-          })
-        : null,
-    [raster]
-  );
+  const rasterLayer = useMemo(() => {
+    if (!raster) return null;
+    const [lonMin, latMin, lonMax, latMax] = raster.bounds;
+    // deck.gl draws `bounds` as a single quad in continuous Mercator space —
+    // it never wraps at ±180° the way MapLibre's own tiles do. For a dataset
+    // that straddles the antimeridian (e.g. Tuvalu), once the camera pans/
+    // zooms enough that its longitude is represented on the "other side" of
+    // 180° from our fixed bounds, the quad ends up ~360° away from the
+    // viewport — i.e. it vanishes. Re-anchor it to whichever 360°-shifted
+    // copy is nearest the camera on every render (cheap arithmetic, no
+    // re-decoding) so it stays visible regardless of how the camera wrapped.
+    const lonCenter = (lonMin + lonMax) / 2;
+    const offset = Math.round((viewState.longitude - lonCenter) / 360) * 360;
+    return new BitmapLayer({
+      id: "zarr-raster",
+      image: raster.canvas,
+      bounds: [lonMin + offset, latMin, lonMax + offset, latMax],
+      opacity: 0.85,
+    });
+  }, [raster, viewState.longitude]);
 
   const markerLayer = useMemo(
     () =>
@@ -351,7 +367,14 @@ export default function ZarrMapPanel({
         ? new ScatterplotLayer({
             id: "probe-marker",
             data: [probePoint],
-            getPosition: (d: ProbePoint) => [d.lon, d.lat],
+            // Same antimeridian re-anchoring as the raster: keep the marker's
+            // single point glued to whichever 360°-shifted copy is nearest
+            // the camera, instead of leaving it pinned to the wrap it was
+            // clicked in.
+            getPosition: (d: ProbePoint) => [
+              d.lon + Math.round((viewState.longitude - d.lon) / 360) * 360,
+              d.lat,
+            ],
             getRadius: 8,
             radiusUnits: "pixels" as const,
             getFillColor: [255, 255, 255, 220],
@@ -361,7 +384,7 @@ export default function ZarrMapPanel({
             pickable: false,
           })
         : null,
-    [probePoint]
+    [probePoint, viewState.longitude]
   );
 
   const handleMapClick = useCallback(
@@ -414,7 +437,7 @@ export default function ZarrMapPanel({
           onLoad={() => setMapReady(true)}
           mapStyle={BASEMAPS.find((b) => b.key === basemap)!.style as string}
           style={{ width: "100%", height: "100%" }}
-          attributionControl={false}
+          attributionControl={{ compact: true }}
         />
       </DeckGL>
 

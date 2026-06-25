@@ -2,9 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  basePath: "/niue-current",
+  basePath: "/currents",
   env: {
-    NEXT_PUBLIC_BASE_PATH: "/niue-current",
+    NEXT_PUBLIC_BASE_PATH: "/currents",
   },
   transpilePackages: [
     "deck.gl",

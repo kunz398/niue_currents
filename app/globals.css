@@ -36,3 +36,23 @@ body {
 .maplibregl-ctrl-logo {
   display: none !important;
 }
+
+/* restyle the native attribution control to match the app's dark theme
+   instead of maplibre's default light pill */
+.maplibregl-ctrl-attrib {
+  background: rgba(26, 31, 46, 0.9) !important;
+  border-radius: 6px;
+}
+
+.maplibregl-ctrl-attrib a {
+  color: #94a3b8 !important;
+}
+
+.maplibregl-ctrl-attrib-inner {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.maplibregl-ctrl-attrib-button {
+  filter: invert(1) brightness(1.5);
+}

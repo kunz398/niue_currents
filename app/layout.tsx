@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Niue Ocean Circulation Forecast (CROCO)",
-  description: "ocean forecast for Niue – temperature, salinity, currents",
+  title: "Ocean Circulation Forecast",
+  description: "Pacific ocean forecasts – temperature, salinity, currents",
 };
 
 export default function RootLayout({

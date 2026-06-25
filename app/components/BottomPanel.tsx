@@ -11,6 +11,7 @@ interface Props {
   depth: DepthLevel;
   currentTime: string | null;
   availableTimes: string[];
+  datasetName?: string;
 }
 
 export default function BottomPanel({
@@ -19,6 +20,7 @@ export default function BottomPanel({
   depth,
   currentTime,
   availableTimes,
+  datasetName,
 }: Props) {
   if (layers.seaSurfaceHeight) {
     return (
@@ -80,6 +82,7 @@ export default function BottomPanel({
             currentTime={currentTime}
             layer={layer}
             label={label}
+            datasetName={datasetName}
           />
         </div>
       </div>
@@ -105,6 +108,7 @@ export default function BottomPanel({
             label={label}
             layer2={primaryLayer === "u" ? "v" : undefined}
             label2={primaryLayer === "u" ? "V (m/s)" : undefined}
+            datasetName={datasetName}
           />
         </div>
       </div>
@@ -118,7 +122,7 @@ export default function BottomPanel({
           <p className="text-xs font-medium text-slate-300">Water mass · all depths</p>
         </div>
         <div className="flex-1 min-h-0 overflow-hidden">
-          <TSDiagram probePoint={probePoint} currentTime={currentTime} />
+          <TSDiagram probePoint={probePoint} currentTime={currentTime} datasetName={datasetName} />
         </div>
       </div>
     </div>

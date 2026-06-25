@@ -24,6 +24,7 @@ interface Props {
   currentTime: string | null;
   layer?: string;
   label?: string;
+  datasetName?: string;
 }
 
 export default function DepthProfile({
@@ -31,6 +32,7 @@ export default function DepthProfile({
   currentTime,
   layer = "temperature",
   label = "Temp (°C)",
+  datasetName = CROCO_DATASET,
 }: Props) {
   const [data, setData] = useState<ProfilePoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -44,7 +46,7 @@ export default function DepthProfile({
     const timer = setTimeout(() => {
       setLoading(true);
 
-      Promise.all([loadDepthLevels(CROCO_DATASET), loadTimeSteps(CROCO_DATASET)])
+      Promise.all([loadDepthLevels(datasetName), loadTimeSteps(datasetName)])
         .then(([depths, times]) => {
           const timeIndex = findNearestIndex(
             times.map((t) => new Date(t).getTime()),
@@ -52,7 +54,7 @@ export default function DepthProfile({
           );
 
           function fetchLayer(variable: string): Promise<ProfilePoint[]> {
-            return loadProfileAtPoint(CROCO_DATASET, variable, {
+            return loadProfileAtPoint(datasetName, variable, {
               timeIndex,
               lon: probePoint!.lon,
               lat: probePoint!.lat,
@@ -89,7 +91,7 @@ export default function DepthProfile({
         .catch(() => { if (!cancelled) setLoading(false); });
     }, 600);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [probePoint, currentTime, layer]);
+  }, [probePoint, currentTime, layer, datasetName]);
 
   if (!probePoint) {
     return (

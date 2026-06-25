@@ -1,14 +1,22 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import dynamic from "next/dynamic";
+import type { MapViewState } from "@deck.gl/core";
 import ControlBar from "./ControlBar";
 import LayersPanel from "./LayersPanel";
 import BottomPanel from "./BottomPanel";
 
 
 // Dynamically import ZarrMapPanel to avoid SSR issues with maplibre-gl / deck.gl
-const ZarrMapPanel = dynamic(() => import("./zarrMapPanel"), { ssr: false });
+const ZarrMapPanel = dynamic(() => import("./zarrMapPanel"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center text-sm text-slate-500">
+      Loading map…
+    </div>
+  ),
+});
 
 export type DepthLevel =
   | -5
@@ -60,88 +68,39 @@ const INITIAL_STATE: AppState = {
   modelRunTime: null,
 };
 
-export default function OceanViewer() {
+interface Props {
+  title?: string;
+  datasetName?: string;
+  initialView?: MapViewState;
+  disabledLayers?: (keyof LayerState)[];
+}
+
+export default function OceanViewer({ title, datasetName, initialView, disabledLayers }: Props) {
   const [state, setState] = useState<AppState>(INITIAL_STATE);
-  const activeLayer: keyof LayerState = state.layers.seaSurfaceHeight
-    ? "seaSurfaceHeight"
-    : state.layers.velocity
-    ? "velocity"
-    : state.layers.salinity
-    ? "salinity"
-    : "temperature";
-  const metadataLayerName =
-    activeLayer === "velocity"
-      ? "u"
-      : activeLayer === "seaSurfaceHeight"
-      ? "zeta"
-      : activeLayer;
 
-  // Fetch available time steps for the currently selected layer
-  useEffect(() => {
-    const abortCtrl = new AbortController();
-    fetch(
-      `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/metadata?item=layerDetails&layerName=${metadataLayerName}`,
-      { signal: abortCtrl.signal }
-    )
-      .then((r) => r.json())
-      .then((data: { nearestTimeIso?: string; datesWithData?: Record<string, Record<string, number[]>> }) => {
-        // Build day anchors from datesWithData, then expand to intraday timesteps.
-        const times: string[] = [];
-        if (data.datesWithData) {
-          for (const year of Object.keys(data.datesWithData).sort()) {
-            for (const month of Object.keys(data.datesWithData[year]).sort((a, b) => Number(a) - Number(b))) {
-              for (const day of data.datesWithData[year][month]) {
-                const paddedMonth = String(parseInt(month) + 1).padStart(2, "0");
-                const paddedDay = String(day).padStart(2, "0");
-                times.push(`${year}-${paddedMonth}-${paddedDay}T00:00:00.000Z`);
-              }
-            }
-          }
-        }
-        if (data.nearestTimeIso && times.length === 0) {
-          times.push(data.nearestTimeIso);
-        }
+  // The timeline comes straight from the Zarr dataset's own `time` axis
+  // (reported up by ZarrMapPanel once it loads coordinates) rather than a
+  // separate metadata lookup — this used to hit a legacy THREDDS/WMS
+  // endpoint that was hardcoded to Niue's feed and on a totally different
+  // forecast cycle than the actual Zarr data, so the timeline never lined
+  // up with what the map could actually render.
+  const setAvailableTimes = useCallback((all: string[]) => {
+    setState((s) => {
+      if (all.length === 0) {
+        return { ...s, availableTimes: [], timeIndex: 0 };
+      }
 
-        // Fetch intraday timesteps for all available days.
-        return Promise.all(
-          times.map((t) =>
-            fetch(
-              `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/metadata?item=timesteps&layerName=${metadataLayerName}&day=${t.slice(0, 10)}`,
-              { signal: abortCtrl.signal }
-            )
-              .then((r) => r.json())
-              .then((d: { timesteps?: string[] }) =>
-                (d.timesteps ?? []).map((ts) => `${t.slice(0, 10)}T${ts}`)
-              )
-              .catch(() => [t])
-          )
-        );
-      })
-      .then((hourlyArrays: string[][]) => {
-        const all = hourlyArrays.flat().sort();
-        setState((s) => {
-          if (all.length === 0) {
-            return { ...s, availableTimes: [], timeIndex: 0 };
-          }
+      const previousTime = s.availableTimes[s.timeIndex];
+      const preservedIndex = previousTime ? all.indexOf(previousTime) : -1;
+      const nextIndex = preservedIndex >= 0 ? preservedIndex : Math.max(0, all.length - 1);
 
-          const previousTime = s.availableTimes[s.timeIndex];
-          const preservedIndex = previousTime ? all.indexOf(previousTime) : -1;
-          const nextIndex = preservedIndex >= 0 ? preservedIndex : Math.max(0, all.length - 1);
-
-          return {
-            ...s,
-            availableTimes: all,
-            timeIndex: nextIndex,
-          };
-        });
-      })
-      .catch((err) => {
-        if (abortCtrl.signal.aborted) return;
-        console.error("metadata fetch failed", err);
-      });
-
-    return () => abortCtrl.abort();
-  }, [metadataLayerName]);
+      return {
+        ...s,
+        availableTimes: all,
+        timeIndex: nextIndex,
+      };
+    });
+  }, []);
 
   const setLayerToggle = useCallback(
     (key: keyof LayerState, value: boolean) =>
@@ -196,7 +155,7 @@ export default function OceanViewer() {
   return (
     <div className="flex flex-col h-full bg-[#0f1117] text-slate-200 select-none">
       {/* Top control bar */}
-      <ControlBar />
+      <ControlBar title={title} />
 
       {/* Main content area */}
       <div className="flex flex-1 min-h-0">
@@ -210,6 +169,7 @@ export default function OceanViewer() {
           particlesEnabled={state.particlesEnabled}
           particleSpeed={state.particleSpeed}
           modelRunTime={state.modelRunTime}
+          disabledLayers={disabledLayers}
           onLayerToggle={setLayerToggle}
           onDepthChange={setDepth}
           onTimeIndexChange={setTimeIndex}
@@ -230,6 +190,9 @@ export default function OceanViewer() {
               particlesEnabled={state.particlesEnabled}
               particleSpeed={state.particleSpeed}
               onModelRunTimeChange={setModelRunTime}
+              onTimesChange={setAvailableTimes}
+              datasetName={datasetName}
+              initialView={initialView}
             />
           </div>
 
@@ -241,6 +204,7 @@ export default function OceanViewer() {
               depth={state.depth}
               currentTime={currentTime}
               availableTimes={state.availableTimes}
+              datasetName={datasetName}
             />
           )}
         </div>

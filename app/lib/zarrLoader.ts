@@ -9,6 +9,35 @@
 import { HTTPStore, openArray } from "zarr";
 import { ZARR_BASE_URL } from "./layers.config";
 
+/**
+ * zarr's HTTPStore calls the bare global `fetch` per chunk with no retry —
+ * a single transient 5xx (Wasabi does serve these intermittently) aborts
+ * the whole multi-chunk read. That's most visible on requests that fan out
+ * into many small chunk fetches (e.g. a full time-series-at-a-point query,
+ * one request per timestep) — the more chunks, the more chances to hit a
+ * blip. Patch the global fetch once with retry-with-backoff for transient
+ * statuses so those reads recover instead of failing outright.
+ */
+if (typeof window !== "undefined" && !(window as { __retryFetchPatched?: boolean }).__retryFetchPatched) {
+  const originalFetch = window.fetch.bind(window);
+  const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
+  const MAX_RETRIES = 3;
+  const BASE_DELAY_MS = 300;
+
+  window.fetch = async (input, init) => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const res = await originalFetch(input, init);
+        if (res.ok || !RETRYABLE_STATUSES.has(res.status) || attempt >= MAX_RETRIES) return res;
+      } catch (err) {
+        if (attempt >= MAX_RETRIES) throw err;
+      }
+      await new Promise((r) => setTimeout(r, BASE_DELAY_MS * 2 ** attempt));
+    }
+  };
+  (window as { __retryFetchPatched?: boolean }).__retryFetchPatched = true;
+}
+
 export const CROCO_DATASET = "d1_temp_salt_uv_z_all.zarr";
 
 /* ------------------------------------------------------------------ */
@@ -139,8 +168,13 @@ export async function loadDepthLevels(
 
 /**
  * Load the `lat`/`lon` rectilinear coordinate arrays from a Zarr dataset.
- * `lon` is normalized to -180..180 — this dataset stores it as 0..360
- * (e.g. ~191° for Niue), but map clicks/viewport use -180..180.
+ * Datasets store `lon` in 0..360 (e.g. Niue is ~188-194°, entirely past the
+ * antimeridian). We fold those down to -180..180 since map clicks/viewport
+ * use that range — but only when the *whole* axis is past 180°. A domain
+ * that straddles the antimeridian (e.g. Tuvalu, ~172-184°) is already
+ * monotonic in raw 0..360; folding only its >180 tail would make it jump
+ * from +180 to -180 mid-array and corrupt every linear-spacing calculation
+ * downstream (lonStep, BitmapLayer bounds, etc.), so leave it unwrapped.
  */
 export async function loadLatLon(
   datasetName: string,
@@ -150,7 +184,8 @@ export async function loadLatLon(
     loadCoordinateArray(datasetName, "lat", baseUrl),
     loadCoordinateArray(datasetName, "lon", baseUrl),
   ]);
-  return { lat, lon: lon.map((v) => (v > 180 ? v - 360 : v)) };
+  const allPastAntimeridian = lon.every((v) => v > 180);
+  return { lat, lon: allPastAntimeridian ? lon.map((v) => v - 360) : lon };
 }
 
 /**
@@ -187,7 +222,10 @@ function parseTimeUnits(units: string): { factor: number; epochMs: number } {
   }
 
   const unitStr = match[1].toLowerCase();
-  const epochMs = new Date(match[2].trim()).getTime();
+  // CF reference dates are UTC, but a space-separated "YYYY-MM-DD HH:MM:SS"
+  // string (no "Z"/offset) is parsed by Date as *local* time — force UTC by
+  // rewriting it into a proper ISO-8601 UTC string before parsing.
+  const epochMs = new Date(`${match[2].trim().replace(" ", "T")}Z`).getTime();
 
   const FACTORS: Record<string, number> = {
     seconds: 1_000,
