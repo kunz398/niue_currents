@@ -52,6 +52,14 @@ const RASTER_VARIABLES: Record<
 };
 const RASTER_KEYS = Object.keys(RASTER_VARIABLES) as (keyof LayerState)[];
 
+// Temperature and velocity get their colour range from the actual loaded
+// slice instead of the fixed defaults above — both vary a lot by depth/time
+// (e.g. -1000m temperature is nowhere near the 20-30°C surface range), so a
+// fixed scale either clips most of the data to one end or leaves it washed
+// out. Salinity/zeta stay on fixed ranges since they cluster tightly enough
+// that a fixed scale is more useful for comparing across frames.
+const DYNAMIC_RANGE_KEYS = new Set<keyof LayerState>(["temperature", "velocity"]);
+
 function buildLegendGradient(colormapName: ColormapName): string {
   const colormap = getColormap(colormapName);
   const stops = [0, 0.25, 0.5, 0.75, 1].map((t) => {
@@ -69,10 +77,21 @@ const SATELLITE_STYLE = {
       type: "raster" as const,
       tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
       tileSize: 256,
-      attribution: "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics",
+      // attribution: "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics",
+    },
+    // Esri's imagery tiles carry no place names on their own — this is Esri's
+    // companion "reference" layer (transparent PNGs with place/road labels and
+    // boundaries) meant to be stacked on top of World_Imagery for exactly that.
+    satelliteLabels: {
+      type: "raster" as const,
+      tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"],
+      tileSize: 256,
     },
   },
-  layers: [{ id: "satellite", type: "raster" as const, source: "satellite" }],
+  layers: [
+    { id: "satellite", type: "raster" as const, source: "satellite" },
+    { id: "satellite-labels", type: "raster" as const, source: "satelliteLabels" },
+  ],
 };
 
 const TOPO_STYLE = {
@@ -146,6 +165,7 @@ export default function ZarrMapPanel({
   const [showBasemapPicker, setShowBasemapPicker] = useState(false);
   const [coords, setCoords] = useState<Coords | null>(null);
   const [raster, setRaster] = useState<RasterImage | null>(null);
+  const [dynamicRange, setDynamicRange] = useState<{ min: number; max: number } | null>(null);
   const mapRef = useRef<MapRef>(null);
   const [mapReady, setMapReady] = useState(false);
   const windOverlayRef = useRef<WindAnimationOverlay | null>(null);
@@ -187,17 +207,73 @@ export default function ZarrMapPanel({
   useEffect(() => {
     if (!coords || !activeKey || !currentTime) {
       setRaster(null);
+      setDynamicRange(null);
       return;
     }
 
     let cancelled = false;
-    const { variable, min, max, colormap: colormapName } = RASTER_VARIABLES[activeKey];
+    const { variable, min: configMin, max: configMax, colormap: colormapName } = RASTER_VARIABLES[activeKey];
+    const isDynamic = DYNAMIC_RANGE_KEYS.has(activeKey);
     const timeIndex = findNearestIndex(coords.timesMs, new Date(currentTime).getTime());
     const depthIndex = findNearestIndex(coords.depths, depth);
 
     loadRasterSlice(datasetName, variable, { timeIndex, depthIndex })
       .then(({ data, height, width }) => {
         if (cancelled) return;
+
+        let min = configMin;
+        let max = configMax;
+        if (isDynamic) {
+          let dataMin = Infinity;
+          let dataMax = -Infinity;
+          let finiteCount = 0;
+          for (let i = 0; i < data.length; i++) {
+            const value = data[i];
+            if (Number.isFinite(value)) {
+              finiteCount++;
+              if (value < dataMin) dataMin = value;
+              if (value > dataMax) dataMax = value;
+            }
+          }
+          if (dataMin <= dataMax && finiteCount > 0) {
+            // A handful of cells can carry sentinel/fill values far outside the
+            // real data range (e.g. land cells that should have been masked to
+            // NaN but read back as exactly 0) — a literal min/max would let one
+            // such cell wreck the whole colour scale. Bucket into a coarse
+            // histogram and clip to the 1st/99th percentile instead — the same
+            // robust-max approach already used for particle speed normalization
+            // in WindAnimationOverlay, just without needing a full sort of
+            // ~1.3M values every time the slice changes.
+            const BIN_COUNT = 512;
+            const span = dataMax - dataMin || 1;
+            const bins = new Uint32Array(BIN_COUNT);
+            for (let i = 0; i < data.length; i++) {
+              const value = data[i];
+              if (!Number.isFinite(value)) continue;
+              const binIdx = Math.min(BIN_COUNT - 1, Math.floor(((value - dataMin) / span) * BIN_COUNT));
+              bins[binIdx]++;
+            }
+            const lowTarget = finiteCount * 0.01;
+            const highTarget = finiteCount * 0.99;
+            let cumulative = 0;
+            let lowBin = 0;
+            let highBin = BIN_COUNT - 1;
+            for (let b = 0; b < BIN_COUNT; b++) {
+              cumulative += bins[b];
+              if (cumulative >= lowTarget) { lowBin = b; break; }
+            }
+            cumulative = 0;
+            for (let b = 0; b < BIN_COUNT; b++) {
+              cumulative += bins[b];
+              if (cumulative >= highTarget) { highBin = b; break; }
+            }
+            min = dataMin + (lowBin / BIN_COUNT) * span;
+            max = dataMin + ((highBin + 1) / BIN_COUNT) * span;
+          }
+          setDynamicRange({ min, max });
+        } else {
+          setDynamicRange(null);
+        }
 
         const canvas = document.createElement("canvas");
         canvas.width = width;
@@ -423,6 +499,10 @@ export default function ZarrMapPanel({
     () => (activeLegend ? buildLegendGradient(activeLegend.colormap) : null),
     [activeLegend]
   );
+  const legendMin = activeKey && dynamicRange ? dynamicRange.min : activeLegend?.min;
+  const legendMax = activeKey && dynamicRange ? dynamicRange.max : activeLegend?.max;
+  const formatLegendValue = (value: number) =>
+    Number.isInteger(value) ? String(value) : value.toFixed(2);
 
   return (
     <div className="relative w-full h-full">
@@ -458,8 +538,8 @@ export default function ZarrMapPanel({
             <p className="text-[11px] text-slate-300 mb-1.5 font-medium">{activeLegend.label}</p>
             <div className="h-3 w-44 rounded" style={{ background: legendGradient ?? undefined }} />
             <div className="flex justify-between mt-1">
-              <span className="text-[9px] text-slate-400">{activeLegend.min}</span>
-              <span className="text-[9px] text-slate-400">{activeLegend.max}</span>
+              <span className="text-[9px] text-slate-400">{legendMin !== undefined ? formatLegendValue(legendMin) : ""}</span>
+              <span className="text-[9px] text-slate-400">{legendMax !== undefined ? formatLegendValue(legendMax) : ""}</span>
             </div>
           </div>
         </div>

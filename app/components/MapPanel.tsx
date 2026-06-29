@@ -118,10 +118,21 @@ const SATELLITE_STYLE = {
       type: "raster" as const,
       tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
       tileSize: 256,
-      attribution: "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics",
+      // attribution: "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics",
+    },
+    // Esri's imagery tiles carry no place names on their own — this is Esri's
+    // companion "reference" layer (transparent PNGs with place/road labels and
+    // boundaries) meant to be stacked on top of World_Imagery for exactly that.
+    satelliteLabels: {
+      type: "raster" as const,
+      tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"],
+      tileSize: 256,
     },
   },
-  layers: [{ id: "satellite", type: "raster" as const, source: "satellite" }],
+  layers: [
+    { id: "satellite", type: "raster" as const, source: "satellite" },
+    { id: "satellite-labels", type: "raster" as const, source: "satelliteLabels" },
+  ],
 };
 
 const TOPO_STYLE = {
