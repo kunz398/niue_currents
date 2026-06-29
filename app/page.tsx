@@ -55,7 +55,7 @@ export default function Home() {
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-8">
-          <Link
+          <Link 
             href="/niue-current"
             className="w-[300px] rounded-3xl border border-white/10 bg-[#0a142d]/55 p-8 backdrop-blur-xl transition hover:-translate-y-2 hover:border-[#2f9fff] hover:shadow-[0_0_30px_rgba(47,159,255,0.25)]"
           >
