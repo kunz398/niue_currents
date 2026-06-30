@@ -128,6 +128,7 @@ interface RasterImage {
   bounds: [number, number, number, number];
 }
 
+
 interface Props {
   layers: LayerState;
   depth: DepthLevel;
@@ -438,6 +439,16 @@ export default function ZarrMapPanel({
       image: raster.canvas,
       bounds: [lonMin + offset, latMin, lonMax + offset, latMax],
       opacity: 0.85,
+      parameters: { depthTest: false },
+      // Nearest-neighbour sampling: prevents WebGL from blurring the texture
+      // when the camera zooms in and each model cell covers many screen pixels.
+      textureParameters: {
+        minFilter: "nearest",
+        magFilter: "nearest",
+        mipmapFilter: "none",
+        addressModeU: "clamp-to-edge",
+        addressModeV: "clamp-to-edge",
+      },
     });
   }, [raster, viewState.longitude]);
 
