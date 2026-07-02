@@ -19,6 +19,7 @@ interface Props {
   currentTime?: string | null;
   particlesEnabled: boolean;
   particleSpeed: number;
+  velocityParticlesAvailable?: boolean | null;
   modelRunTime?: string | null;
   disabledLayers?: (keyof LayerState)[];
   onLayerToggle: (key: keyof LayerState, value: boolean) => void;
@@ -35,6 +36,7 @@ export default function LayersPanel({
   availableTimes,
   particlesEnabled,
   particleSpeed,
+  velocityParticlesAvailable,
   modelRunTime,
   disabledLayers,
   onLayerToggle,
@@ -107,7 +109,12 @@ export default function LayersPanel({
             <button
               type="button"
               aria-pressed={particlesEnabled}
-              onClick={() => onParticlesEnabledChange(!particlesEnabled)}
+              disabled={velocityParticlesAvailable === false}
+              onClick={() => {
+                if (velocityParticlesAvailable !== false) {
+                  onParticlesEnabledChange(!particlesEnabled);
+                }
+              }}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -115,8 +122,9 @@ export default function LayersPanel({
                 width: "100%",
                 border: "none",
                 background: "transparent",
-                cursor: "pointer",
+                cursor: velocityParticlesAvailable === false ? "not-allowed" : "pointer",
                 padding: 0,
+                opacity: velocityParticlesAvailable === false ? 0.55 : 1,
               }}
             >
               <span style={{ fontSize: 12, color: particlesEnabled ? "#fff" : "rgba(255,255,255,0.4)" }}>
@@ -147,6 +155,12 @@ export default function LayersPanel({
                 />
               </span>
             </button>
+
+            {velocityParticlesAvailable === false && (
+              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", lineHeight: 1.4 }}>
+                Particles unavailable for this dataset (missing u/v vector arrays).
+              </p>
+            )}
 
             {/* Speed control hidden — particle speed is kept constant (see OceanViewer's
                 INITIAL_STATE.particleSpeed). Re-enable this block to expose the slider again.

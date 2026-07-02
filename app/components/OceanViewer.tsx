@@ -77,6 +77,10 @@ interface Props {
 
 export default function OceanViewer({ title, datasetName, initialView, disabledLayers }: Props) {
   const [state, setState] = useState<AppState>(INITIAL_STATE);
+  const [velocityParticleSupport, setVelocityParticleSupport] = useState<{
+    datasetName: string;
+    available: boolean;
+  } | null>(null);
 
   // The timeline comes straight from the Zarr dataset's own `time` axis
   // (reported up by ZarrMapPanel once it loads coordinates) rather than a
@@ -149,8 +153,23 @@ export default function OceanViewer({ title, datasetName, initialView, disabledL
     []
   );
 
+  const setVelocityParticlesAvailability = useCallback(
+    (reportedDatasetName: string, available: boolean) => {
+      setVelocityParticleSupport({ datasetName: reportedDatasetName, available });
+      if (!available) {
+        setState((s) => (s.particlesEnabled ? { ...s, particlesEnabled: false } : s));
+      }
+    },
+    []
+  );
+
   const currentTime =
     state.availableTimes[state.timeIndex] ?? null;
+  const activeDatasetName = datasetName ?? "d1_temp_salt_uv_z_all.zarr";
+  const velocityParticlesAvailable =
+    velocityParticleSupport?.datasetName === activeDatasetName
+      ? velocityParticleSupport.available
+      : null;
 
   return (
     <div className="flex flex-col h-full bg-[#0f1117] text-slate-200 select-none">
@@ -168,6 +187,7 @@ export default function OceanViewer({ title, datasetName, initialView, disabledL
           currentTime={currentTime}
           particlesEnabled={state.particlesEnabled}
           particleSpeed={state.particleSpeed}
+          velocityParticlesAvailable={velocityParticlesAvailable}
           modelRunTime={state.modelRunTime}
           disabledLayers={disabledLayers}
           onLayerToggle={setLayerToggle}
@@ -191,6 +211,7 @@ export default function OceanViewer({ title, datasetName, initialView, disabledL
               particleSpeed={state.particleSpeed}
               onModelRunTimeChange={setModelRunTime}
               onTimesChange={setAvailableTimes}
+              onVelocityParticlesAvailabilityChange={setVelocityParticlesAvailability}
               datasetName={datasetName}
               initialView={initialView}
             />
