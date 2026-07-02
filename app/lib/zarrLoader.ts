@@ -153,8 +153,6 @@ async function getConsolidatedMetadataStore(
   variable: string
 ): Promise<{
   url: string;
-  fetchOptions: RequestInit;
-  keys: () => Promise<string[]>;
   getItem: (item: string, opts?: RequestInit) => Promise<ArrayBuffer>;
   setItem: (item: string, value: string | ArrayBuffer) => Promise<boolean>;
   deleteItem: (item: string) => Promise<boolean>;
@@ -183,22 +181,28 @@ async function getConsolidatedMetadataStore(
     }
   }
 
+  const storeLike = store as unknown as {
+    url: string;
+    getItem: (item: string, opts?: RequestInit) => Promise<ArrayBuffer>;
+    setItem: (item: string, value: string | ArrayBuffer) => Promise<boolean>;
+    deleteItem: (item: string) => Promise<boolean>;
+    containsItem: (item: string) => Promise<boolean>;
+  };
+
   return {
-    url: store.url,
-    fetchOptions: store.fetchOptions,
-    keys: () => store.keys(),
+    url: storeLike.url,
     getItem: async (item: string, opts?: RequestInit) => {
       const normalized = normalizeStoreKey(item);
       const injected = virtualMetadata.get(normalized);
       if (injected) return injected;
-      return store.getItem(normalized, opts);
+      return storeLike.getItem(normalized, opts);
     },
-    setItem: (item, value) => store.setItem(item, value),
-    deleteItem: (item) => store.deleteItem(item),
+    setItem: (item, value) => storeLike.setItem(item, value),
+    deleteItem: (item) => storeLike.deleteItem(item),
     containsItem: async (item: string) => {
       const normalized = normalizeStoreKey(item);
       if (virtualMetadata.has(normalized)) return true;
-      return store.containsItem(normalized);
+      return storeLike.containsItem(normalized);
     },
   };
 }
