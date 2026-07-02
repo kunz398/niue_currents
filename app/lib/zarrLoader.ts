@@ -153,7 +153,6 @@ async function getConsolidatedMetadataStore(
   variable: string
 ): Promise<{
   url: string;
-  fetchOptions: RequestInit;
   keys: () => Promise<string[]>;
   getItem: (item: string, opts?: RequestInit) => Promise<ArrayBuffer>;
   setItem: (item: string, value: string | ArrayBuffer) => Promise<boolean>;
@@ -185,7 +184,6 @@ async function getConsolidatedMetadataStore(
 
   return {
     url: store.url,
-    fetchOptions: store.fetchOptions,
     keys: () => store.keys(),
     getItem: async (item: string, opts?: RequestInit) => {
       const normalized = normalizeStoreKey(item);
