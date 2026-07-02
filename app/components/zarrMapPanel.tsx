@@ -14,6 +14,7 @@ import {
   loadLatLon,
   loadModelInitTime,
   findNearestIndex,
+  hasArray,
   loadRasterSlice,
 } from "../lib/zarrLoader";
 import { getColormap, getColormapLUT, type ColormapName } from "../lib/colormaps";
@@ -128,6 +129,12 @@ interface RasterImage {
   bounds: [number, number, number, number];
 }
 
+interface DynamicRangeState {
+  key: keyof LayerState;
+  min: number;
+  max: number;
+}
+
 
 interface Props {
   layers: LayerState;
@@ -139,6 +146,7 @@ interface Props {
   particleSpeed: number;
   onModelRunTimeChange?: (iso: string | null) => void;
   onTimesChange?: (times: string[]) => void;
+  onVelocityParticlesAvailabilityChange?: (datasetName: string, available: boolean) => void;
   datasetName?: string;
   initialView?: MapViewState;
 }
@@ -157,6 +165,7 @@ export default function ZarrMapPanel({
   particleSpeed,
   onModelRunTimeChange,
   onTimesChange,
+  onVelocityParticlesAvailabilityChange,
   datasetName = CROCO_DATASET,
   initialView = DEFAULT_INITIAL_VIEW,
 }: Props) {
@@ -166,11 +175,19 @@ export default function ZarrMapPanel({
   const [showBasemapPicker, setShowBasemapPicker] = useState(false);
   const [coords, setCoords] = useState<Coords | null>(null);
   const [raster, setRaster] = useState<RasterImage | null>(null);
-  const [dynamicRange, setDynamicRange] = useState<{ min: number; max: number } | null>(null);
+  const [dynamicRange, setDynamicRange] = useState<DynamicRangeState | null>(null);
   const mapRef = useRef<MapRef>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [velocityComponentsSupport, setVelocityComponentsSupport] = useState<{
+    datasetName: string;
+    enabled: boolean;
+  } | null>(null);
   const windOverlayRef = useRef<WindAnimationOverlay | null>(null);
   const particleMountRef = useRef<HTMLDivElement>(null);
+  // Raw values behind the current raster canvas, kept alongside it so a click
+  // can look up the value under the cursor without a separate network round-trip.
+  const rasterGridRef = useRef<{ data: Float32Array; width: number; height: number } | null>(null);
+  const [valuePopup, setValuePopup] = useState<{ lon: number; lat: number; value: number | null } | null>(null);
 
   const activeKey = RASTER_KEYS.find((k) => layers[k]) ?? null;
 
@@ -204,11 +221,43 @@ export default function ZarrMapPanel({
     };
   }, [datasetName, onModelRunTimeChange, onTimesChange]);
 
+  // Some datasets (currently Tuvalu) carry current_speed but no u/v arrays.
+  // Probe once per dataset so velocity raster still works while particle
+  // animation is skipped cleanly when components are unavailable.
+  useEffect(() => {
+    let cancelled = false;
+
+    Promise.all([hasArray(datasetName, "u"), hasArray(datasetName, "v")])
+      .then(([hasU, hasV]) => {
+        if (!cancelled) {
+          const enabled = hasU && hasV;
+          setVelocityComponentsSupport({ datasetName, enabled });
+          onVelocityParticlesAvailabilityChange?.(datasetName, enabled);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setVelocityComponentsSupport({ datasetName, enabled: false });
+          onVelocityParticlesAvailabilityChange?.(datasetName, false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [datasetName, onVelocityParticlesAvailabilityChange]);
+
+  const canAnimateVelocity =
+    velocityComponentsSupport?.datasetName === datasetName &&
+    velocityComponentsSupport.enabled;
+
   // Rebuild the colour raster whenever the active layer, depth, or time changes.
   useEffect(() => {
     if (!coords || !activeKey || !currentTime) {
       setRaster(null);
       setDynamicRange(null);
+      rasterGridRef.current = null;
+      setValuePopup(null);
       return;
     }
 
@@ -218,9 +267,19 @@ export default function ZarrMapPanel({
     const timeIndex = findNearestIndex(coords.timesMs, new Date(currentTime).getTime());
     const depthIndex = findNearestIndex(coords.depths, depth);
 
+    // Prevent stale legend bounds from the previous slice while a new dynamic
+    // range is loading (or if the new request later fails).
+    if (isDynamic) {
+      setDynamicRange(null);
+    }
+
     loadRasterSlice(datasetName, variable, { timeIndex, depthIndex })
       .then(({ data, height, width }) => {
         if (cancelled) return;
+        rasterGridRef.current = { data, width, height };
+        // The value a previous click reported is for the old depth/time/layer
+        // slice — drop it rather than let it silently go stale on screen.
+        setValuePopup(null);
 
         let min = configMin;
         let max = configMax;
@@ -230,7 +289,10 @@ export default function ZarrMapPanel({
           let finiteCount = 0;
           for (let i = 0; i < data.length; i++) {
             const value = data[i];
-            if (Number.isFinite(value)) {
+            // Land cells come back as a literal 0 sentinel instead of NaN (see
+            // note below) — exclude them here too, or a coastline's worth of
+            // zeros would drag the computed min down and skew the whole scale.
+            if (Number.isFinite(value) && value !== 0) {
               finiteCount++;
               if (value < dataMin) dataMin = value;
               if (value > dataMax) dataMax = value;
@@ -250,7 +312,7 @@ export default function ZarrMapPanel({
             const bins = new Uint32Array(BIN_COUNT);
             for (let i = 0; i < data.length; i++) {
               const value = data[i];
-              if (!Number.isFinite(value)) continue;
+              if (!Number.isFinite(value) || value === 0) continue;
               const binIdx = Math.min(BIN_COUNT - 1, Math.floor(((value - dataMin) / span) * BIN_COUNT));
               bins[binIdx]++;
             }
@@ -271,7 +333,7 @@ export default function ZarrMapPanel({
             min = dataMin + (lowBin / BIN_COUNT) * span;
             max = dataMin + ((highBin + 1) / BIN_COUNT) * span;
           }
-          setDynamicRange({ min, max });
+          setDynamicRange({ key: activeKey, min, max });
         } else {
           setDynamicRange(null);
         }
@@ -336,7 +398,12 @@ export default function ZarrMapPanel({
             const value = data[srcRowOff + srcCol];
             const pixelIndex = rowOff + col * 4;
 
-            if (!Number.isFinite(value)) {
+            // Land cells are supposed to be NaN (per the Zarr array's declared
+            // fill_value) but the served data actually writes a literal 0 for
+            // them instead — without this, they pass the finite check and get
+            // painted at the bottom of the colour scale (e.g. solid blue for
+            // the red-blue colormap), covering the island in flat color.
+            if (!Number.isFinite(value) || value === 0) {
               imageData.data[pixelIndex + 3] = 0;
               continue;
             }
@@ -356,7 +423,12 @@ export default function ZarrMapPanel({
           bounds: [lonEdgeMin, latEdgeMin, lonEdgeMax, latEdgeMax],
         });
       })
-      .catch((err) => console.error("Failed to load raster slice:", err));
+      .catch((err) => {
+        if (!cancelled && isDynamic) {
+          setDynamicRange(null);
+        }
+        console.error("Failed to load raster slice:", err);
+      });
 
     return () => {
       cancelled = true;
@@ -369,7 +441,13 @@ export default function ZarrMapPanel({
   // deck.gl's render pipeline.
   useEffect(() => {
     const map = mapRef.current?.getMap();
-    if (!map || !mapReady || activeKey !== "velocity" || !particlesEnabled) {
+    if (
+      !map ||
+      !mapReady ||
+      activeKey !== "velocity" ||
+      !particlesEnabled ||
+      !canAnimateVelocity
+    ) {
       windOverlayRef.current?.destroy();
       windOverlayRef.current = null;
       return;
@@ -401,7 +479,7 @@ export default function ZarrMapPanel({
     // particleSpeed is intentionally excluded: live speed changes are pushed
     // via setSpeedFactor() below instead of tearing down/reseeding particles.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, activeKey, particlesEnabled, datasetName]);
+  }, [mapReady, activeKey, particlesEnabled, datasetName, canAnimateVelocity]);
 
   // Adjust particle speed live without recreating the overlay (avoids a reseed/flicker).
   useEffect(() => {
@@ -481,12 +559,24 @@ export default function ZarrMapPanel({
   const handleMapClick = useCallback(
     (info: { coordinate?: number[] | null }) => {
       if (!info.coordinate) return;
-      onProbePointChange({
-        lon: info.coordinate[0],
-        lat: info.coordinate[1],
-      });
+      const [lon, lat] = info.coordinate;
+      onProbePointChange({ lon, lat });
+
+      const grid = rasterGridRef.current;
+      if (!coords || !grid) {
+        setValuePopup(null);
+        return;
+      }
+
+      const latIdx = findNearestIndex(coords.lat, lat);
+      const lonIdx = findNearestIndex(coords.lon, lon);
+      const raw = grid.data[latIdx * grid.width + lonIdx];
+      // Land cells carry a 0 sentinel instead of NaN (same quirk the raster
+      // colouring works around) — surface those as "no data" rather than 0.
+      const value = Number.isFinite(raw) && raw !== 0 ? raw : null;
+      setValuePopup({ lon, lat, value });
     },
-    [onProbePointChange]
+    [onProbePointChange, coords]
   );
 
   const handleZoomIn = useCallback(
@@ -505,13 +595,33 @@ export default function ZarrMapPanel({
     });
   }, []);
 
+  // Screen position for the value popup, re-projected whenever the point or
+  // camera changes so it tracks the point during pan/zoom. Rendered as a plain
+  // sibling div (like the particle canvas) rather than react-map-gl's Popup:
+  // that Popup mounts inside <Map>, which maplibre stacks at z-index:-1 behind
+  // deck.gl's own (transparent but pointer-events:auto) canvas — so its close
+  // button visually sits on top but every click actually still lands on the
+  // canvas underneath, hijacking the close click into an immediate new map
+  // click. A plain sibling div is outside that stacking trap entirely.
+  const [popupScreenPos, setPopupScreenPos] = useState<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    if (!valuePopup) {
+      setPopupScreenPos(null);
+      return;
+    }
+    const map = mapRef.current?.getMap();
+    setPopupScreenPos(map ? map.project([valuePopup.lon, valuePopup.lat]) : null);
+  }, [valuePopup, viewState]);
+
   const activeLegend = activeKey ? RASTER_VARIABLES[activeKey] : null;
   const legendGradient = useMemo(
     () => (activeLegend ? buildLegendGradient(activeLegend.colormap) : null),
     [activeLegend]
   );
-  const legendMin = activeKey && dynamicRange ? dynamicRange.min : activeLegend?.min;
-  const legendMax = activeKey && dynamicRange ? dynamicRange.max : activeLegend?.max;
+  const activeDynamicRange =
+    activeKey && dynamicRange?.key === activeKey ? dynamicRange : null;
+  const legendMin = activeDynamicRange?.min ?? activeLegend?.min;
+  const legendMax = activeDynamicRange?.max ?? activeLegend?.max;
   const formatLegendValue = (value: number) =>
     Number.isInteger(value) ? String(value) : value.toFixed(2);
 
@@ -535,6 +645,27 @@ export default function ZarrMapPanel({
           attributionControl={{ compact: true }}
         />
       </DeckGL>
+
+      {valuePopup && activeLegend && popupScreenPos && (
+        <div
+          className="absolute z-20 -translate-x-1/2 pointer-events-none"
+          style={{ left: popupScreenPos.x, top: popupScreenPos.y - 14 }}
+        >
+          <div className="-translate-y-full bg-[#1a1f2e] border border-[#2d3748] rounded-lg px-3 py-2 shadow-lg pointer-events-auto relative min-w-[7rem]">
+            <button
+              onClick={() => setValuePopup(null)}
+              aria-label="Close popup"
+              className="absolute top-1 right-1.5 text-slate-400 hover:text-slate-200 text-sm leading-none"
+            >
+              ×
+            </button>
+            <p className="text-[11px] font-semibold text-slate-200 mb-0.5 pr-3">{activeLegend.label}</p>
+            <p className="text-[11px] text-slate-300">
+              {valuePopup.value !== null ? valuePopup.value.toFixed(2) : "No data"}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Mount point for the flow-particle canvas. Rendered as a sibling after
           DeckGL (not inside the map container) so it stacks above deck.gl's own

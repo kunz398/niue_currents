@@ -83,6 +83,7 @@ export function getStore(
 /*  Array cache – avoid reopening the same array repeatedly            */
 /* ------------------------------------------------------------------ */
 const arrayCache = new Map<string, Promise<import("zarr").ZarrArray>>();
+const consolidatedMetadataCache = new Map<string, Promise<Record<string, unknown> | null>>();
 
 /**
  * Open (or reuse) a Zarr array under a dataset.
@@ -96,16 +97,110 @@ export function getArray(
   const key = `${store.url}/${variable}`;
   let promise = arrayCache.get(key);
   if (!promise) {
-    promise = openArray({ store, path: variable, mode: "r" }).catch((e: Error) => {
-      arrayCache.delete(key);
-      throw new Error(
-        `Failed to open "${variable}" array in "${datasetName}". ` +
-        `Check that ${store.url}/${variable}/.zarray exists and is reachable. Original: ${e.message}`
-      );
-    });
+    promise = openArray({ store, path: variable, mode: "r" })
+      .catch(async (e: Error) => {
+        // Some published stores ship consolidated metadata in .zmetadata but
+        // don't expose per-array .zarray/.zattrs files. Fall back to a virtual
+        // metadata view so openArray can still resolve array metadata.
+        const consolidatedStore = await getConsolidatedMetadataStore(store, variable);
+        if (!consolidatedStore) {
+          throw e;
+        }
+        return openArray({ store: consolidatedStore, path: variable, mode: "r" });
+      })
+      .catch((e: Error) => {
+        arrayCache.delete(key);
+        throw new Error(
+          `Failed to open "${variable}" array in "${datasetName}". ` +
+          `Checked both direct metadata (${store.url}/${variable}/.zarray) and consolidated metadata (${store.url}/.zmetadata). ` +
+          `Original: ${e.message}`
+        );
+      });
     arrayCache.set(key, promise);
   }
   return promise;
+}
+
+async function loadConsolidatedMetadata(store: HTTPStore): Promise<Record<string, unknown> | null> {
+  const key = `${store.url}/.zmetadata`;
+  let promise = consolidatedMetadataCache.get(key);
+  if (!promise) {
+    promise = fetch(key, { cache: "no-cache" })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const parsed = (await response.json()) as { metadata?: unknown };
+        if (!parsed || typeof parsed !== "object" || !parsed.metadata || typeof parsed.metadata !== "object") {
+          return null;
+        }
+        return parsed.metadata as Record<string, unknown>;
+      })
+      .catch(() => null);
+    consolidatedMetadataCache.set(key, promise);
+  }
+  return promise;
+}
+
+function encodeJson(value: unknown): ArrayBuffer {
+  return new TextEncoder().encode(JSON.stringify(value)).buffer;
+}
+
+function normalizeStoreKey(item: string): string {
+  return item.replace(/^\/+/, "");
+}
+
+async function getConsolidatedMetadataStore(
+  store: HTTPStore,
+  variable: string
+): Promise<{
+  url: string;
+  fetchOptions: RequestInit;
+  keys: () => Promise<string[]>;
+  getItem: (item: string, opts?: RequestInit) => Promise<ArrayBuffer>;
+  setItem: (item: string, value: string | ArrayBuffer) => Promise<boolean>;
+  deleteItem: (item: string) => Promise<boolean>;
+  containsItem: (item: string) => Promise<boolean>;
+} | null> {
+  const metadata = await loadConsolidatedMetadata(store);
+  if (!metadata) return null;
+
+  const variableZarrayKey = `${variable}/.zarray`;
+  const variableZattrsKey = `${variable}/.zattrs`;
+  if (!(variableZarrayKey in metadata)) {
+    return null;
+  }
+
+  const virtualMetadata = new Map<string, ArrayBuffer>();
+  const keysToInject = [
+    ".zgroup",
+    ".zattrs",
+    variableZarrayKey,
+    variableZattrsKey,
+  ];
+
+  for (const k of keysToInject) {
+    if (k in metadata) {
+      virtualMetadata.set(k, encodeJson(metadata[k]));
+    }
+  }
+
+  return {
+    url: store.url,
+    fetchOptions: store.fetchOptions,
+    keys: () => store.keys(),
+    getItem: async (item: string, opts?: RequestInit) => {
+      const normalized = normalizeStoreKey(item);
+      const injected = virtualMetadata.get(normalized);
+      if (injected) return injected;
+      return store.getItem(normalized, opts);
+    },
+    setItem: (item, value) => store.setItem(item, value),
+    deleteItem: (item) => store.deleteItem(item),
+    containsItem: async (item: string) => {
+      const normalized = normalizeStoreKey(item);
+      if (virtualMetadata.has(normalized)) return true;
+      return store.containsItem(normalized);
+    },
+  };
 }
 
 /**
@@ -115,6 +210,7 @@ export function getArray(
  * (99 separate chunk requests for `time`, since its chunk size is 1).
  */
 const dataCache = new Map<string, Promise<unknown>>();
+const availabilityCache = new Map<string, Promise<boolean>>();
 
 function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
   let promise = dataCache.get(key) as Promise<T> | undefined;
@@ -124,6 +220,121 @@ function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
       throw e;
     });
     dataCache.set(key, promise);
+  }
+  return promise;
+}
+
+type JsonObject = Record<string, unknown>;
+
+function parseIsoToMs(value: unknown): number | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  // Keep only millisecond precision so dates like ...000000000 parse reliably.
+  const normalized = trimmed.replace(/\.(\d{3})\d+/, ".$1");
+  const ms = Date.parse(normalized);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+async function fetchJson(path: string): Promise<JsonObject> {
+  const response = await fetch(path, { cache: "no-cache" });
+  if (!response.ok) {
+    throw new Error(`${response.status} ${response.statusText}`);
+  }
+  return (await response.json()) as JsonObject;
+}
+
+async function loadDatasetAttrs(datasetName: string, baseUrl?: string): Promise<JsonObject> {
+  const store = getStore(datasetName, baseUrl);
+  const key = `${store.url}/.zattrs`;
+  return cached(key, () => fetchJson(key));
+}
+
+interface ArrayMetadata {
+  shape?: number[];
+}
+
+async function loadArrayMetadata(
+  datasetName: string,
+  variable: string,
+  baseUrl?: string
+): Promise<ArrayMetadata> {
+  const store = getStore(datasetName, baseUrl);
+  const key = `${store.url}/${variable}/.zarray`;
+  return cached(key, () => fetchJson(key)) as Promise<ArrayMetadata>;
+}
+
+async function inferTimeCountFromVariables(
+  datasetName: string,
+  baseUrl?: string
+): Promise<number | null> {
+  const candidates = ["temperature", "salinity", "current_speed"];
+  for (const variable of candidates) {
+    try {
+      const meta = await loadArrayMetadata(datasetName, variable, baseUrl);
+      const count = meta.shape?.[0];
+      if (typeof count === "number" && Number.isFinite(count) && count > 0) {
+        return count;
+      }
+    } catch {
+      // Try next candidate.
+    }
+  }
+  return null;
+}
+
+async function buildFallbackTimeSteps(
+  datasetName: string,
+  baseUrl?: string
+): Promise<string[]> {
+  const attrs = await loadDatasetAttrs(datasetName, baseUrl);
+  const startMs = parseIsoToMs(attrs.time_coverage_start);
+  const endMs = parseIsoToMs(attrs.time_coverage_end);
+  const count = await inferTimeCountFromVariables(datasetName, baseUrl);
+
+  if (!startMs || !count || count <= 0) {
+    throw new Error(
+      `Dataset "${datasetName}" has no readable time coordinate and insufficient fallback metadata.`
+    );
+  }
+
+  if (count === 1) {
+    return [new Date(startMs).toISOString()];
+  }
+
+  const stepMs = endMs && endMs > startMs
+    ? (endMs - startMs) / (count - 1)
+    : 60 * 60 * 1000;
+
+  return Array.from({ length: count }, (_, i) =>
+    new Date(startMs + i * stepMs).toISOString()
+  );
+}
+
+export function hasArray(
+  datasetName: string,
+  variable: string,
+  baseUrl?: string
+): Promise<boolean> {
+  const store = getStore(datasetName, baseUrl);
+  const url = `${store.url}/${variable}/.zarray`;
+  let promise = availabilityCache.get(url);
+  if (!promise) {
+    promise = (async () => {
+      try {
+        const head = await fetch(url, { method: "HEAD", cache: "no-cache" });
+        if (head.ok) return true;
+      } catch {
+        // Some hosts block HEAD; fall back to GET.
+      }
+      try {
+        const get = await fetch(url, { cache: "no-cache" });
+        return get.ok;
+      } catch {
+        return false;
+      }
+    })();
+    availabilityCache.set(url, promise);
   }
   return promise;
 }
@@ -248,11 +459,22 @@ export function loadModelInitTime(
 ): Promise<string> {
   const key = `${getStore(datasetName, baseUrl).url}/time:init`;
   return cached(key, async () => {
-    const arr = await getArray(datasetName, "time", baseUrl);
-    const attrs = await arr.attrs.asObject();
-    const units: string = attrs.units ?? "hours since 2026-06-16 00:00:00";
-    const { epochMs } = parseTimeUnits(units);
-    return new Date(epochMs).toISOString();
+    try {
+      const arr = await getArray(datasetName, "time", baseUrl);
+      const attrs = await arr.attrs.asObject();
+      const units: string = attrs.units ?? "hours since 2026-06-16 00:00:00";
+      const { epochMs } = parseTimeUnits(units);
+      return new Date(epochMs).toISOString();
+    } catch {
+      const datasetAttrs = await loadDatasetAttrs(datasetName, baseUrl);
+      const fallbackMs = parseIsoToMs(datasetAttrs.time_coverage_start);
+      if (!fallbackMs) {
+        throw new Error(
+          `Failed to infer model init time for "${datasetName}" (missing time array and time_coverage_start).`
+        );
+      }
+      return new Date(fallbackMs).toISOString();
+    }
   });
 }
 
@@ -265,20 +487,24 @@ export function loadTimeSteps(
 ): Promise<string[]> {
   const key = `${getStore(datasetName, baseUrl).url}/time:iso`;
   return cached(key, async () => {
-    const arr = await getArray(datasetName, "time", baseUrl);
+    try {
+      const arr = await getArray(datasetName, "time", baseUrl);
 
-    // Read the `units` attribute so we know the reference epoch
-    const attrs = await arr.attrs.asObject();
-    const units: string = attrs.units ?? "hours since 2026-06-16 00:00:00";
-    const { factor, epochMs } = parseTimeUnits(units);
+      // Read the `units` attribute so we know the reference epoch
+      const attrs = await arr.attrs.asObject();
+      const units: string = attrs.units ?? "hours since 2026-06-16 00:00:00";
+      const { factor, epochMs } = parseTimeUnits(units);
 
-    const raw = await arr.get(null);
-    const data = raw.data as ArrayLike<number>;
+      const raw = await arr.get(null);
+      const data = raw.data as ArrayLike<number>;
 
-    return Array.from(data).map((offset) => {
-      const ms = epochMs + offset * factor;
-      return new Date(ms).toISOString();
-    });
+      return Array.from(data).map((offset) => {
+        const ms = epochMs + offset * factor;
+        return new Date(ms).toISOString();
+      });
+    } catch {
+      return buildFallbackTimeSteps(datasetName, baseUrl);
+    }
   });
 }
 
